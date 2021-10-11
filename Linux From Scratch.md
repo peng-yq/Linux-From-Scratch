@@ -133,7 +133,7 @@ Ubuntu在默认配置下只拥有一个硬盘，此处我们添加一个新的�
 
 可通过Ubuntu自带的磁盘管理工具或通过命令`lsblk`查看本宿主机磁盘情况。
 
-<img src="Linux From Scratch.assets/image-20211011105817338.png">
+<img src="Linux From Scratch.assets/image-20211011200902437.png">
 
 我们可以看到两块硬盘中sda被分成了3个分区，而sdb未被分区，因此我们选择sdb通过`sudo cfdisk /dev/sdb`命令进行操作，并选择GPT(GUID)分区表。
 
@@ -147,7 +147,7 @@ GUID分区表的优势：
 
 本文划分了3个分区，分别作为根分区（Root Partition），主分区（Main Partition），交换分区(Swap Partition)，具体容量分配如下。
 
-<img src="Linux From Scratch.assets/image-20211011112443245.png">
+<img src="Linux From Scratch.assets/image-20211011201016033.png">
 
 ### 2.3 在分区上建立文件系统
 
