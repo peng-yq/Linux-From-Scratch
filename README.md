@@ -23,6 +23,9 @@ Hard Disk 2：20GB（For LFS Building）
 
 All the Softwares and Packs for LFS Building：
 
+https://pan.baidu.com/s/1RY7qaP5MHJDyBGSq7Dkppw 
+Password：LFSL 
+
 ## Reference
 
 [The Offical Document](https://www.linuxfromscratch.org/lfs/view/stable/index.html)
