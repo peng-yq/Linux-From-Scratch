@@ -242,16 +242,41 @@ sudo ln -sv $LFS/tools /
 
 ### 第4章 最后准备工作
 
+在LFS分区中需要进行的第一项任务是，创建一个有限的目录树，使得在第6章中编译的程序 (以及第5章中的glibc和libstdc++) 可以被安装到它们的最终位置。这样，在第8章中重新构建它们时，就能直接覆盖这些临时程序。
+
+以root身份，执行以下命令创建所需的目录布局：
+
+```shell
+mkdir -pv $LFS/{etc,var} $LFS/usr/{bin,lib,sbin}
+
+for i in bin lib sbin; do
+  ln -sv usr/$i $LFS/$i
+done
+
+case $(uname -m) in
+  x86_64) mkdir -pv $LFS/lib64 ;;
+esac
+```
+
+在第6章中，会使用交叉编译器编译程序 (细节参见工具链技术说明一节)。为了将这个交叉编译器和其他程序分离，它会被安装在一个专门的目录。执行以下命令创建该目录：
+
+```shell
+mkdir -pv $LFS/tools
+```
+
 #### 4.1 添加LFS用户
 
-在作为root用户登录时，一个微小的错误就可能损坏甚至摧毁整个系统。因此在后续的搭建中，我们将以非特权用户身份编译软件包。为了更容易地建立一个干净的工作环境，最好创建一个名为lfs的新用户，以及它从属于的一个新组 (组名也是lfs)，以便我们在安装过程中使用。
+在作为root用户登录时，一个微小的错误就可能损坏甚至摧毁整个系统。因此在后续的搭建中，我们将以非特权用户身份编译软件包。为了更容易地建立一个干净的工作环境，最好创建一个名为lfs的新用户，以及它从属于的一个新组 (组名也是lfs)，以便我们在安装过程中使用，此外我们还需将lfs设为$LFS中所有目录的所有者，使lfs对它们拥有完全访问权。
 
 ```shell
 sudo groupadd lfs
 sudo useradd -s /bin/bash -g lfs -m -k /dev/null lfs
 sudo passwd lfs
 sudo chown -v lfs $LFS/sources
-sudo chown -v lfs $LFS/tools
+chown -v lfs $LFS/{usr{,/*},lib,var,etc,bin,sbin,tools}
+case $(uname -m) in
+  x86_64) chown -v lfs $LFS/lib64 ;;
+esac
 ```
 
 上述命令的含义：
@@ -370,14 +395,22 @@ Binutils包含汇编器、链接器以及其他用于处理目标文件的工具
 cd $LFS/sources
 tar -xf binutils-2.37.tar.xz
 cd binutils-2.37
+
+#建立专用目录用于构建Binutils
 mkdir -v build
 cd build
+
+#准备编译Binutils
 ../configure --prefix=$LFS/tools \
              --with-sysroot=$LFS \
              --target=$LFS_TGT   \
              --disable-nls       \
              --disable-werror
+             
+#编译             
 make
+
+#安装该软件包
 make install -j1
 ```
 
@@ -396,4 +429,436 @@ GCC软件包包含GNU编译器集合，其中有C和C++编译器。
 估计构建时间： 12 SBU
 
 需要硬盘空间： 3.4 GB
+
+```shell
+cd $LFS/sources
+tar -xvf gcc-11.2.0.tar.xz
+cd gcc-11.2.0
+
+#解压相应依赖并重命名
+tar -xf ../mpfr-4.1.0.tar.xz
+mv -v mpfr-4.1.0 mpfr
+tar -xf ../gmp-6.2.1.tar.xz
+mv -v gmp-6.2.1 gmp
+tar -xf ../mpc-1.2.1.tar.gz
+mv -v mpc-1.2.1 mpc
+
+#x86_64平台，设置存放64位库的默认目录为"lib"
+case $(uname -m) in
+  x86_64)
+    sed -e '/m64=/s/lib64/lib/' \
+        -i.orig gcc/config/i386/t-linux64
+ ;;
+esac
+
+mkdir -v build
+cd build
+
+#准备编译GCC
+../configure                                       \
+    --target=$LFS_TGT                              \
+    --prefix=$LFS/tools                            \
+    --with-glibc-version=2.11                      \
+    --with-sysroot=$LFS                            \
+    --with-newlib                                  \
+    --without-headers                              \
+    --enable-initfini-array                        \
+    --disable-nls                                  \
+    --disable-shared                               \
+    --disable-multilib                             \
+    --disable-decimal-float                        \
+    --disable-threads                              \
+    --disable-libatomic                            \
+    --disable-libgomp                              \
+    --disable-libquadmath                          \
+    --disable-libssp                               \
+    --disable-libvtv                               \
+    --disable-libstdcxx                            \
+    --enable-languages=c,c++
+    
+#编译并进行安装
+time make
+make install
+
+#创建一个完整版本的内部头文件
+cd ..
+cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
+  `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/install-tools/include/limits.h
+```
+
+经过测试本宿主机编译完成GCC花费72min，orz。
+
+#### 5.3 Linux-5.13.12 API 头文件
+
+Linux API头文件（在linux-5.13.12.tar.xz中) 导出内核API供Glibc使用。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：1.2GB
+
+```shell
+cd $LFS/sources
+tar -xvf linux-5.13.12.tar.xz
+cd linux-5.13.12
+
+#确保软件包中没有遗留陈旧的文件
+make mrproper
+
+make headers
+find usr/include -name '.*' -delete
+rm usr/include/Makefile
+cp -rv usr/include $LFS/usr
+
+rm -rf linux-5.13.12
+```
+
+#### 5.4 Glibc-2.34
+
+Glibc软件包包含主要的C语言库。它提供用于分配内存、检索目录、打开和关闭文件、读写文件、字符串处理、模式匹配、算术等用途的基本子程序。
+
+估计构建时间：4.2 SBU
+
+需要硬盘空间：744MB
+
+```shell
+cd $LFS/sources
+tar -xvf glibc-2.34.tar.xz
+cd glibc-2.34
+
+#创建一个LSB兼容性符号链接。另外，对于x86_64，创建一个动态链接器正常工作所必须的符号链接
+case $(uname -m) in
+    i?86)   ln -sfv ld-linux.so.2 $LFS/lib/ld-lsb.so.3
+    ;;
+    x86_64) ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64
+            ln -sfv ../lib/ld-linux-x86-64.so.2 $LFS/lib64/ld-lsb-x86-64.so.3
+    ;;
+esac
+
+#应用一个补丁，使得这些程序在FHS兼容的位置存放运行时数据
+patch -Np1 -i ../glibc-2.34-fhs-1.patch
+
+mkdir -v build
+cd build
+
+#确保将ldconfig和sln工具安装到/usr/sbin目录中
+echo "rootsbindir=/usr/sbin" > configparms
+
+#准备编译Glibc
+../configure                             \
+      --prefix=/usr                      \
+      --host=$LFS_TGT                    \
+      --build=$(../scripts/config.guess) \
+      --enable-kernel=3.2                \
+      --with-headers=$LFS/usr/include    \
+      libc_cv_slibdir=/usr/lib
+
+#编译同时检查变量
+make
+echo $LFS
+
+#安装该软件包
+make DESTDIR=$LFS install
+
+#改正ldd脚本中硬编码的可执行文件加载器路径
+sed '/RTLDLIST=/s@/usr@@g' -i $LFS/usr/bin/ldd
+
+#最后的检查
+echo 'int main(){}' > dummy.c
+$LFS_TGT-gcc dummy.c
+readelf -l a.out | grep '/ld-linux'
+
+#若一切正常，最后输出为 [Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
+
+#请理测试文件
+rm -v dummy.c a.out
+
+#安装limits.h头文件的安装
+$LFS/tools/libexec/gcc/$LFS_TGT/11.2.0/install-tools/mkheaders
+
+cd ../..
+rm -rf glibc-2.34
+```
+
+#### 5.5 GCC-11.2.0中的Libstdc++-第一遍
+
+Libstdc++是C++标准库。我们需要它才能编译C++代码（GCC的一部分用C++编写）。但在构建第一遍的GCC时我们不得不暂缓安装它，因为它依赖于当时还没有安装到目标目录的Glibc。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：1.0 GB
+
+```shell
+cd $LFS/sources
+
+#需要重新解压GCC源码包
+tar -xvf gcc-11.2.0.tar.xz
+cd gcc-11.2.0
+
+mkdir -v build
+cd build 
+
+#准备编译Libstdc++
+../libstdc++-v3/configure           \
+    --host=$LFS_TGT                 \
+    --build=$(../config.guess)      \
+    --prefix=/usr                   \
+    --disable-multilib              \
+    --disable-nls                   \
+    --disable-libstdcxx-pch         \
+    --with-gxx-include-dir=/tools/$LFS_TGT/include/c++/11.2.0
+    
+time make
+make DESTDIR=$LFS install
+
+cd ../..
+rm -rf gcc-11.2.0
+```
+
+### 第6章 交叉编译临时工具
+
+#### 6.1 M4-1.4.19
+
+M4软件包包含一个宏处理器。
+
+估计构建时间：0.2 SBU
+需要硬盘空间：32 MB
+
+```shell
+cd $LFS/sources
+tar -xvf m4-1.4.19.tar.xz
+cd m4-1.4.19
+
+#准备编译M4
+./configure --prefix=/usr   \
+            --host=$LFS_TGT \
+            --build=$(build-aux/config.guess)
+            
+ make
+ make DESTDIR=$LFS install
+ 
+ cd ..
+ rm -rf m4-1.4.19
+```
+
+编译过程中出现如下错误。
+
+<img src="Linux From Scratch.assets/image-20211017171122392.png">
+
+检查发现缺少第5章Glibc编译完成后对limits.h头文件的安装（命令已补充在[5.4 Glibc-2.34](####5.4 Glibc-2.34)）。
+
+#### 6.2 Ncurses-6.2
+
+Ncurses软件包包含使用时不需考虑终端特性的字符屏幕处理函数库。
+
+估计构建时间：0.7SBU
+
+需要硬盘空间：48MB
+
+```shell
+cd $LFS/sources
+tar -xvf ncurses-6.2.tar.gz
+cd ncurses-6.2
+
+#保证在配置是优先查找gawk命令
+sed -i s/mawk// configure
+
+#在宿主系统构建“tic”程序
+mkdir build
+pushd build
+  ../configure
+  make -C include
+  make -C progs tic
+popd
+
+#准备编译ncurses
+./configure --prefix=/usr                \
+            --host=$LFS_TGT              \
+            --build=$(./config.guess)    \
+            --mandir=/usr/share/man      \
+            --with-manpage-format=normal \
+            --with-shared                \
+            --without-debug              \
+            --without-ada                \
+            --without-normal             \
+            --enable-widec
+            
+make
+make DESTDIR=$LFS TIC_PATH=$(pwd)/build/progs/tic install
+echo "INPUT(-lncursesw)" > $LFS/usr/lib/libncurses.so
+
+cd ..
+rm -rf ncurses-6.2
+```
+
+#### 6.3 Bash-5.1.8
+
+Bash软件包包含Bourne-Again SHell。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：64 MB
+
+```shell
+cd $LFS
+tar -xvf bash-5.1.8.tar.gz
+cd bash-5.1.8
+
+#准备编译
+./configure --prefix=/usr                   \
+            --build=$(support/config.guess) \
+            --host=$LFS_TGT                 \
+            --without-bash-malloc
+            
+make
+make DESTDIR=$LFS install
+
+#为使用 sh 命令运行的shell的程序考虑，创建一个链接
+ln -sv bash $LFS/bin/sh
+
+cd ..
+rm -rf bash-5.1.8
+```
+
+#### 6.4 Coreutils-8.32
+
+Coreutils软件包包含用于显示和设定系统基本属性的工具。
+
+估计构建时间：0.6 SBU
+
+需要硬盘空间：151 MB
+
+```shell
+cd $LFS/sources
+tar -xvf coreutils-8.32.tar.xz 
+cd coreutils-8.32
+
+#准备编译
+./configure --prefix=/usr                     \
+            --host=$LFS_TGT                   \
+            --build=$(build-aux/config.guess) \
+            --enable-install-program=hostname \
+            --enable-no-install-program=kill,uptime
+            
+make
+make DESTDIR=$LFS install
+
+#将程序移动到它们最终安装时的正确位置。
+mv -v $LFS/usr/bin/chroot                                     $LFS/usr/sbin
+mkdir -pv $LFS/usr/share/man/man8
+mv -v $LFS/usr/share/man/man1/chroot.1                        $LFS/usr/share/man/man8/chroot.8
+sed -i 's/"1"/"8"/'                                           $LFS/usr/share/man/man8/chroot.8
+
+cd ..
+rm -rf coreutils-8.32
+```
+
+#### 6.5 Diffutils-3.8
+
+Diffutils软件包包含显示文件或目录之间差异的程序。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：28 MB
+
+```shell
+cd $LFS/sources
+tar -xvf diffutils-3.8.tar.xz
+cd diffutils-3.8
+
+#准备编译
+./configure --prefix=/usr --host=$LFS_TGT
+
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf diffutils-3.8
+```
+
+#### 6.6 File-5.40
+
+File软件包包含用于确定给定文件类型的工具。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：31 MB
+
+```shell
+cd $LFS/sources
+tar -xvf file-5.40.tar.gz
+cd file-5.40
+
+#宿主系统file命令的版本必须和正在构建的软件包相同，才能在构建过程中创建必要的签名数据文件。运行以下命令，为宿主系统构建它
+mkdir build
+pushd build
+  ../configure --disable-bzlib      \
+               --disable-libseccomp \
+               --disable-xzlib      \
+               --disable-zlib
+  make
+popd
+
+#准备编译
+./configure --prefix=/usr --host=$LFS_TGT --build=$(./config.guess)
+
+make FILE_COMPILE=$(pwd)/build/src/file
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf file-5.40
+```
+
+#### 6.7 Findutils-4.8.0
+
+Findutils软件包包含用于查找文件的程序。这些程序能够递归地搜索目录树，以及创建、维护和搜索文件数据库 (一般比递归搜索快，但在数据库最近没有更新时不可靠)。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：40 MB
+
+```shell
+cd $LFS/sources
+tar -xvf findutils-4.8.0.tar.xz
+cd findutils-4.8.0
+
+#准备编译
+./configure --prefix=/usr   \
+            --localstatedir=/var/lib/locate \
+            --host=$LFS_TGT \
+            --build=$(build-aux/config.guess)
+            
+make
+make DESTDIR=$LFS install
+cd ..
+rm -rf findutils-4.8.0
+```
+
+#### 6.8 Gawk-5.1.0
+
+Gawk软件包包含操作文本文件的程序。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：43 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gawk-5.1.0.tar.xz
+cd gawk-5.1.0
+
+#确保不要安装一些没有必要的文件
+sed -i 's/extras//' Makefile.in
+
+#准备编译
+./configure --prefix=/usr   \
+            --host=$LFS_TGT \
+            --build=$(./config.guess)
+            
+make
+make DESTDIR=$LFS install
+cd ..
+rm -rf gawk-5.1.0
+```
+
+#### 6.9 Grep-3.7
 
