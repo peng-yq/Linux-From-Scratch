@@ -2,7 +2,7 @@
 
 LFS──Linux from Scratch，就是一种从网上直接下载源码，从头编译Linux的安装方式。它不是发行版，只是一个菜谱，告诉你到哪里去买菜（下载源码），怎么把这些生东西( raw code) 作成符合自己口味的菜肴──个性化的Linux，不单单是个性的桌面。
 
-[官方中文文档](https://bf.mengyan1223.wang/lfs/zh_CN/11.0-systemd/LFS-SYSD-BOOK.html)     [官方英文文档](https://www.linuxfromscratch.org/lfs/view/stable/index.html)      [FAQ](https://www.linuxfromscratch.org/faq/)      [镜像](https://www.linuxfromscratch.org/mirrors.html)     [Linux操作教程](https://www.runoob.com/linux/linux-tutorial.html)     [LFS视频教程(English-version)](https://www.youtube.com/watch?v=9TYr1mCzMcg&list=PLyc5xVO2uDsAlIkKBIGauDQ6LejoQovyL)    [LFS视频教程(English-version & Ubuntu-as-Host-Machine)](https://www.youtube.com/watch?v=5tRJgDJC7kY)
+[官方中文文档](https://bf.mengyan1223.wang/lfs/zh_CN/11.0-systemd/LFS-SYSD-BOOK.html)     [官方英文文档](https://www.linuxfromscratch.org/lfs/view/stable/index.html)      [FAQ](https://www.linuxfromscratch.org/faq/)      [镜像](https://www.linuxfromscratch.org/mirrors.html)     [Linux操作教程](https://www.runoob.com/linux/linux-tutorial.html)     [LFS视频教程(English-version)](https://www.youtube.com/watch?v=9TYr1mCzMcg&t=909s)    [LFS视频教程(English-version & Ubuntu-as-Host-Machine)](https://www.youtube.com/watch?v=5tRJgDJC7kY)
 
 ## 第Ⅰ部分 引言
 
@@ -861,4 +861,289 @@ rm -rf gawk-5.1.0
 ```
 
 #### 6.9 Grep-3.7
+
+Grep软件包包含在文件内容中进行搜索的程序。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：25 MB
+
+```shell
+cd $LFS/sources
+tar -xvf grep-3.7.tar.xz
+cd grep-3.7
+
+#准备编译
+./configure --prefix=/usr   \
+            --host=$LFS_TGT
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf grep-3.7
+```
+
+#### 6.10 Gzip-1.10
+
+Gzip软件包包含压缩和解压缩文件的程序。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：10 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gzip-1.10.tar.xz
+cd gzip-1.10
+
+#准备编译
+./configure --prefix=/usr --host=$LFS_TGT
+
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf gzip-1.10
+```
+
+#### 6.11 Make-4.3
+
+Make软件包包含一个程序，用于控制从软件包源代码生成可执行文件和其他非源代码文件的过程。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf make-4.3.tar.xz
+cd make-4.3
+
+#准备编译make
+./configure --prefix=/usr   \
+            --without-guile \
+            --host=$LFS_TGT \
+            --build=$(build-aux/config.guess)
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf make-4.3
+```
+
+#### 6.12 Patch-2.7.6
+
+Patch软件包包含通过应用 “补丁” 文件，修改或创建文件的程序，补丁文件通常是diff程序创建的。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：12 MB
+
+```shell
+cd $LFS/sources
+tar -xvf patch-2.7.6.tar.xz
+cd patch-2.7.6
+
+#准备编译
+./configure --prefix=/usr   \
+            --host=$LFS_TGT \
+            --build=$(build-aux/config.guess)
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf patch-2.7.6
+```
+
+#### 6.13 Sed-4.8
+
+Sed软件包包含一个流编辑器。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：20 MB
+
+```shell
+cd $LFS/sources
+tar -xvf sed-4.8.tar.xz
+cd sed-4.8
+
+#准备编译
+./configure --prefix=/usr   \
+            --host=$LFS_TGT
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf sed-4.8
+```
+
+#### 6.14 Tar-1.34
+
+Tar软件包提供创建tar归档文件，以及对归档文件进行其他操作的功能。Tar可以对已经创建的归档文件进行提取文件，存储新文件，更新文件，或者列出文件等操作。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：38 MB
+
+```shell
+cd $LFS/sources
+tar -xvf tar-1.34.tar.xz
+cd tar-1.34
+
+#准备编译
+./configure --prefix=/usr                     \
+            --host=$LFS_TGT                   \
+            --build=$(build-aux/config.guess)
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf tar-1.34
+```
+
+#### 6.15 Xz-5.2.5
+
+Xz软件包包含文件压缩和解压缩工具，它能够处理lzma和新的xz压缩文件格式。使用xz压缩文本文件，可以得到比传统的gzip或bzip2更好的压缩比。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf xz-5.2.5.tar.xz
+cd xz-5.2.5
+
+#准备编译
+./configure --prefix=/usr                     \
+            --host=$LFS_TGT                   \
+            --build=$(build-aux/config.guess) \
+            --disable-static                  \
+            --docdir=/usr/share/doc/xz-5.2.5
+            
+make
+make DESTDIR=$LFS install
+
+cd ..
+rm -rf xz-5.2.5
+```
+
+#### 6.16 Binutils-2.37 - 第二遍
+
+估计构建时间：1.3 SBU
+
+需要硬盘空间：505 MB
+
+```shell
+cd $LFS/sources
+tar -xvf binutils-2.37.tar.xz
+cd binutils-2.37
+
+mkdir -v build
+cd build
+
+#准备编译
+../configure                   \
+    --prefix=/usr              \
+    --build=$(../config.guess) \
+    --host=$LFS_TGT            \
+    --disable-nls              \
+    --enable-shared            \
+    --disable-werror           \
+    --enable-64-bit-bfd
+    
+make
+
+#安装该软件包，并绕过导致libctf.so链接到宿主发行版zlib的问题
+make DESTDIR=$LFS install -j1
+install -vm755 libctf/.libs/libctf.so.0.0.0 $LFS/usr/lib
+
+cd ../..
+rm -rf binutils-2.37
+```
+
+#### 6.17 GCC-11.2.0 - 第二遍
+
+估计构建时间：12 SBU
+
+需要硬盘空间：3.3 GB
+
+```shell
+cd $LFS/sources
+tar -xvf gcc-11.2.0.tar.xz
+cd gcc-11.2.0
+
+#解压GMP、MPFR、MPC，并重命名为GCC要求的目录名
+tar -xf ../mpfr-4.1.0.tar.xz
+mv -v mpfr-4.1.0 mpfr
+tar -xf ../gmp-6.2.1.tar.xz
+mv -v gmp-6.2.1 gmp
+tar -xf ../mpc-1.2.1.tar.gz
+mv -v mpc-1.2.1 mpc
+
+如果是在x86_64上构建，修改64位库文件的默认目录名为 “lib”
+case $(uname -m) in
+  x86_64)
+    sed -e '/m64=/s/lib64/lib/' -i.orig gcc/config/i386/t-linux64
+  ;;
+esac
+
+mkdir -v build
+cd build
+
+#创建一个符号链接，以允许libgcc在构建时启用POSIX线程支持
+mkdir -pv $LFS_TGT/libgcc
+ln -s ../../../libgcc/gthr-posix.h $LFS_TGT/libgcc/gthr-default.h
+
+#准备编译
+../configure                                       \
+    --build=$(../config.guess)                     \
+    --host=$LFS_TGT                                \
+    --prefix=/usr                                  \
+    CC_FOR_TARGET=$LFS_TGT-gcc                     \
+    --with-build-sysroot=$LFS                      \
+    --enable-initfini-array                        \
+    --disable-nls                                  \
+    --disable-multilib                             \
+    --disable-decimal-float                        \
+    --disable-libatomic                            \
+    --disable-libgomp                              \
+    --disable-libquadmath                          \
+    --disable-libssp                               \
+    --disable-libvtv                               \
+    --disable-libstdcxx                            \
+    --enable-languages=c,c++
+    
+make
+make DESTDIR=$LFS install
+
+#创建符号链接
+ln -sv gcc $LFS/usr/bin/cc
+
+cd ../..
+rm -rf gcc-11.2.0
+```
+
+### 第7章 进入Chroot并构建其他临时工具
+
+本章将构建临时系统最后缺失的部分。为了隔离环境的正常工作，必须它与正在运行的内核之间建立一些通信机制。我们可以使用“chroot”环境进行构建，它与宿主系统除正在运行的内核外完全隔离。
+
+> **本文后续所有命令都应该是在root用户登录的情况下完成，而不是lfs用户。此外，我们还要检查$LFS变量是否已经在root用户的环境下设置好。**
+
+由于$LFS中整个目录树的所有者都是lfs，我们需要将其目录所有者改变为root。
+
+```shell
+chown -R root:root $LFS/{usr,lib,var,etc,bin,sbin,tools}
+case $(uname -m) in
+  x86_64) chown -R root:root $LFS/lib64 ;;
+esac
+```
+
+#### 7.1 创建初始设备节点
 
