@@ -1145,5 +1145,1123 @@ case $(uname -m) in
 esac
 ```
 
-#### 7.1 创建初始设备节点
+#### 7.1 准备虚拟内核文件系统
+
+内核对外提供了一些文件系统，以便自己和用户进行通信，它们是虚拟文件系统，并不占用磁盘空间，其内容保留在内存中。通过如下命令创建这些文件系统的挂载点。
+
+```shell
+mkdir -pv $LFS/{dev,proc,sys,run}
+```
+
+**挂载和填充/dev**
+
+```shell
+mount -v --bind /dev $LFS/dev
+```
+
+**挂载虚拟内核文件系统**
+
+```shell
+mount -v --bind /dev/pts $LFS/dev/pts
+mount -vt proc proc $LFS/proc
+mount -vt sysfs sysfs $LFS/sys
+mount -vt tmpfs tmpfs $LFS/run
+
+if [ -h $LFS/dev/shm ]; then
+  mkdir -pv $LFS/$(readlink $LFS/dev/shm)
+fi
+```
+
+#### 7.2 进入Chroot环境
+
+现在已经准备好了所有继续构建其余工具时必要的软件包，可以进入chroot环境并完成剩余临时工具的安装。在安装最终的系统时，会继续使用这个chroot环境。以root用户身份，运行以下命令以进入当前只包含临时工具的chroot环境。
+
+```shell
+chroot "$LFS" /usr/bin/env -i   \
+    HOME=/root                  \
+    TERM="$TERM"                \
+    PS1='(lfs chroot) \u:\w\$ ' \
+    PATH=/usr/bin:/usr/sbin \
+    /bin/bash --login +h
+```
+
+> bash提示符包含 I have no name!。这是正常的，因为现在还没有创建/etc/passwd文件。
+>
+> 本章剩余部分和后续各章中的命令都要在chroot环境中运行。
+
+#### 7.3 创建目录
+
+```shell
+mkdir -pv /{boot,home,mnt,opt,srv}
+mkdir -pv /etc/{opt,sysconfig}
+mkdir -pv /lib/firmware
+mkdir -pv /media/{floppy,cdrom}
+mkdir -pv /usr/{,local/}{include,src}
+mkdir -pv /usr/local/{bin,lib,sbin}
+mkdir -pv /usr/{,local/}share/{color,dict,doc,info,locale,man}
+mkdir -pv /usr/{,local/}share/{misc,terminfo,zoneinfo}
+mkdir -pv /usr/{,local/}share/man/man{1..8}
+mkdir -pv /var/{cache,local,log,mail,opt,spool}
+mkdir -pv /var/lib/{color,misc,locate}
+
+ln -sfv /run /var/run
+ln -sfv /run/lock /var/lock
+
+install -dv -m 0750 /root
+install -dv -m 1777 /tmp /var/tmp
+```
+
+#### 7.4  创建必要的文件和符号链接
+
+为了满足那些需要/etc/mtab的工具，执行以下命令，创建符号链接。
+
+```shell
+ln -sv /proc/self/mounts /etc/mtab
+```
+
+创建一个基本的/etc/hosts文件，一些测试套件，以及Perl的一个配置文件将会使用它。
+
+```shell
+cat > /etc/hosts << EOF
+127.0.0.1  localhost $(hostname)
+::1        localhost
+EOF
+```
+
+为了使得root能正常登录，而且用户名“root”能被正常识别，必须在文件/etc/passwd和/etc/groups中写入相关的条目。
+
+```shell
+cat > /etc/passwd << "EOF"
+root:x:0:0:root:/root:/bin/bash
+bin:x:1:1:bin:/dev/null:/bin/false
+daemon:x:6:6:Daemon User:/dev/null:/bin/false
+messagebus:x:18:18:D-Bus Message Daemon User:/run/dbus:/bin/false
+systemd-bus-proxy:x:72:72:systemd Bus Proxy:/:/bin/false
+systemd-journal-gateway:x:73:73:systemd Journal Gateway:/:/bin/false
+systemd-journal-remote:x:74:74:systemd Journal Remote:/:/bin/false
+systemd-journal-upload:x:75:75:systemd Journal Upload:/:/bin/false
+systemd-network:x:76:76:systemd Network Management:/:/bin/false
+systemd-resolve:x:77:77:systemd Resolver:/:/bin/false
+systemd-timesync:x:78:78:systemd Time Synchronization:/:/bin/false
+systemd-coredump:x:79:79:systemd Core Dumper:/:/bin/false
+uuidd:x:80:80:UUID Generation Daemon User:/dev/null:/bin/false
+systemd-oom:x:81:81:systemd Out Of Memory Daemon:/:/bin/false
+nobody:x:99:99:Unprivileged User:/dev/null:/bin/false
+EOF
+```
+
+创建/etc/group文件。
+
+```shell
+cat > /etc/group << "EOF"
+root:x:0:
+bin:x:1:daemon
+sys:x:2:
+kmem:x:3:
+tape:x:4:
+tty:x:5:
+daemon:x:6:
+floppy:x:7:
+disk:x:8:
+lp:x:9:
+dialout:x:10:
+audio:x:11:
+video:x:12:
+utmp:x:13:
+usb:x:14:
+cdrom:x:15:
+adm:x:16:
+messagebus:x:18:
+systemd-journal:x:23:
+input:x:24:
+mail:x:34:
+kvm:x:61:
+systemd-bus-proxy:x:72:
+systemd-journal-gateway:x:73:
+systemd-journal-remote:x:74:
+systemd-journal-upload:x:75:
+systemd-network:x:76:
+systemd-resolve:x:77:
+systemd-timesync:x:78:
+systemd-coredump:x:79:
+uuidd:x:80:
+systemd-oom:x:81:81:
+wheel:x:97:
+nogroup:x:99:
+users:x:999:
+EOF
+```
+
+为了移除 “I have no name!” 提示符，需要打开一个新shell。由于已经创建了文件/etc/passwd和/etc/group，用户名和组名现在就可以正常解析了。
+
+```shell
+exec /bin/bash --login +h
+```
+
+login、agetty和init等程序使用一些日志文件，以记录登录系统的用户和登录时间等信息。然而，这些程序不会创建不存在的日志文件。初始化日志文件，并为它们设置合适的访问权限。
+
+```shell
+touch /var/log/{btmp,lastlog,faillog,wtmp}
+chgrp -v utmp /var/log/lastlog
+chmod -v 664  /var/log/lastlog
+chmod -v 600  /var/log/btmp
+```
+
+#### 7.5 GCC-11.2.0中的Libstdc++ - 第二遍
+
+在构建第二遍的GCC时，我们不得不暂缓安装C++标准库，因为当时没有编译器能够编译它。我们不能使用那一节构建的编译器，因为它是一个本地编译器，不应在chroot外使用，否则可能导致编译产生的库被宿主系统组件污染。
+
+估计构建时间：0.8 SBU
+
+需要硬盘空间：1.1 GB
+
+```shell
+cd $LFS/sources
+tar -xvf gcc-11.2.0.tar.xz
+cd gcc-11.2.0
+
+#创建一个符号链接，允许在GCC源码树中构建Libstdc++
+ln -s gthr-posix.h libgcc/gthr-default.h
+
+mkdir -v build
+cd build
+
+#准备编译
+../libstdc++-v3/configure            \
+    CXXFLAGS="-g -O2 -D_GNU_SOURCE"  \
+    --prefix=/usr                    \
+    --disable-multilib               \
+    --disable-nls                    \
+    --host=$(uname -m)-lfs-linux-gnu \
+    --disable-libstdcxx-pch
+    
+make
+make install
+
+cd ../..
+rm -rf gcc-11.2.0
+```
+
+#### 7.6 Gettext-0.21
+
+Gettext软件包包含国际化和本地化工具，它们允许程序在编译时加入NLS(本地语言支持) 功能，使它们能够以用户的本地语言输出消息。
+
+估计构建时间：1.8 SBU
+
+需要硬盘空间：280 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gettext-0.21.tar.xz
+cd gettext-0.21
+
+#准备编译
+./configure --disable-shared
+
+make
+
+#安装msgfmt，msgmerge，以及xgettext这三个程序
+cp -v gettext-tools/src/{msgfmt,msgmerge,xgettext} /usr/bin
+
+cd ..
+rm -rf gettext-0.21
+```
+
+#### 7.7 Bison-3.7.6
+
+Bison软件包包含语法分析器生成器。
+
+估计构建时间：0.3 SBU
+
+需要硬盘空间：50 MB
+
+```shell
+cd $LFS/sources
+tar -xvf bison-3.7.6.tar.xz
+cd bison-3.7.6
+
+#准备编译
+./configure --prefix=/usr \
+            --docdir=/usr/share/doc/bison-3.7.6
+            
+make
+make install
+
+cd ..
+rm -rf bison-3.7.6
+```
+
+#### 7.8 Perl-5.34.0
+
+Perl软件包包含实用报表提取语言
+
+估计构建时间：1.7 SBU
+
+需要硬盘空间：272 MB
+
+```shell
+cd $LFS/sources
+tar -xvf perl-5.34.tar.xz
+cd perl-5.34
+
+#准备编译
+sh Configure -des                                        \
+             -Dprefix=/usr                               \
+             -Dvendorprefix=/usr                         \
+             -Dprivlib=/usr/lib/perl5/5.34/core_perl     \
+             -Darchlib=/usr/lib/perl5/5.34/core_perl     \
+             -Dsitelib=/usr/lib/perl5/5.34/site_perl     \
+             -Dsitearch=/usr/lib/perl5/5.34/site_perl    \
+             -Dvendorlib=/usr/lib/perl5/5.34/vendor_perl \
+             -Dvendorarch=/usr/lib/perl5/5.34/vendor_perl
+             
+make
+make install
+
+cd ..
+rm -rf perl-5.34
+```
+
+#### 7.9 Python-3.9.6
+
+Python3软件包包含Python开发环境。它被用于面向对象编程，编写脚本，为大型程序建立原型，或者开发完整的应用。
+
+```shell
+cd $LFS/sources
+tar -xvf Python-3.9.6.tar.xz
+cd Python-3.9.6
+
+#准备编译 
+./configure --prefix=/usr   \
+            --enable-shared \
+            --without-ensurepip
+           
+make
+make install
+
+cd ..
+rm -rf Python-3.9.6
+```
+
+#### 7.10 Texinfo-6.8
+
+Texinfo软件包包含阅读、编写和转换info页面的程序。
+
+估计构建时间：0.3 SBU
+
+需要硬盘空间：109 MB
+
+```shell
+cd $LFS/sources
+tar -xvf texinfo-6.8.tar.xz
+cd texinfo-6.8
+
+#修复构建该软件包时出现的问题
+sed -e 's/__attribute_nonnull__/__nonnull/' \
+    -i gnulib/lib/malloc/dynarray-skeleton.c
+    
+#准备编译
+./configure --prefix=/usr
+
+make
+make install
+
+cd ..
+rm -rf texinfo-6.8
+```
+
+#### 7.11 Util-linux-2.37.2
+
+Util-linux软件包包含一些工具程序。
+
+估计构建时间：0.7 SBU
+
+需要硬盘空间：128 MB
+
+```shell
+cd $LFS/sources
+tar -xvf util-linux-2.37.2
+cd util-linux-2.37.2
+
+mkdir -pv /var/lib/hwclock
+
+#准备编译
+./configure ADJTIME_PATH=/var/lib/hwclock/adjtime    \
+            --libdir=/usr/lib    \
+            --docdir=/usr/share/doc/util-linux-2.37.2 \
+            --disable-chfn-chsh  \
+            --disable-login      \
+            --disable-nologin    \
+            --disable-su         \
+            --disable-setpriv    \
+            --disable-runuser    \
+            --disable-pylibmount \
+            --disable-static     \
+            --without-python     \
+            runstatedir=/run
+            
+make
+make install
+
+cd ..
+rm -rf util-linux-2.37.2
+```
+
+#### 7.12 请理和备份临时系统
+
+**清理**
+
+删除临时工具的文档，以防止它们进入最终构建的系统。其次，为了防止libtool.la文件对构建系统产生的问题，我们对其进行删除。最后我们还需要删除*/tools*目录，因为我们已不再需要它。
+
+```shell
+rm -rf /usr/share/{info,man,doc}/*
+find /usr/{lib,libexec} -name \*.la -delete
+rm -rf /tools
+```
+
+**备份**
+
+```shell
+#在chroot环境之外进行
+exit
+
+#进行备份之前，解除内核虚拟文件系统的挂载
+umount $LFS/dev{/pts,}
+umount $LFS/{sys,proc,run}
+
+#备份
+cd $LFS 
+tar -cJpf $HOME/lfs-temp-tools-11.0-systemd.tar.xz .
+```
+
+***还原***
+
+==请务必再次检查$LFS是否设置正确==
+
+```shell
+cd $LFS 
+rm -rf ./* 
+tar -xpf $HOME/lfs-temp-tools-11.0-systemd.tar.xz
+```
+
+若在备份或从备份进行恢复时退出了chroot环境，记得检查内核虚拟文件系统是否仍然处于挂载状态 (可以使用findmnt | grep $LFS进行检查)。若未进行挂载，请再次输入[7.1 准备虚拟内核文件系统](7.1 准备虚拟内核文件系统)、[7.2 进入Chroot环境](7.2 进入Chroot环境)的命令。
+
+## 第Ⅳ部分 构建LFS系统
+
+### 第8章 安装基本系统软件
+
+由于在第7章中我们退出了chroot环境，因此我们首先需要将虚拟文件系统进行挂载并且再次进入chroot环境。
+
+#### 8.1 Man-pages-5.13
+
+Man-pages软件包包含2,200多个man页面。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：4.7 MB
+
+```shell
+cd $LFS/sources
+tar -xvf man-pages-5.13.tar.xz
+cd man-pages-5.13
+
+make prefix=/usr install
+
+cd ..
+rm -rf man-pages-5.13
+```
+
+#### 8.2 Iana-Etc-20210611
+
+Iana-Etc软件包包含网络服务和协议的数据。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：4.7 MB
+
+```shell
+cd $LFS/sources
+tar -xvf iana-etc-20210611.tar.gz
+cd iana-etc-20210611
+
+cp services protocols /etc
+
+cd ..
+rm -rf iana-etc-20210611
+```
+
+
+
+#### 8.3 Glibc-2.34
+
+**安装Glibc**
+
+Glibc软件包包含主要的C语言库。它提供用于分配内存、检索目录、打开和关闭文件、读写文件、字符串处理、模式匹配、算术等用途的基本子程序。
+
+估计构建时间：21 SBU
+
+需要硬盘空间：2.4 GB
+
+```shell
+cd $LFS/sources
+tar -xvf glibc-2.34.tar.xz
+cd glibc-2.34
+
+#修复上游开发者发现的一项安全问题
+sed -e '/NOTIFY_REMOVED)/s/)/ \&\& data.attr != NULL)/' \
+    -i sysdeps/unix/sysv/linux/mq_notify.c
+    
+#应用下列补丁，使得这些程序在 FHS 兼容的位置存储运行时数据
+patch -Np1 -i ../glibc-2.34-fhs-1.patch
+
+mkdir -v build
+cd build
+
+echo "rootsbindir=/usr/sbin" > configparms
+
+#准备编译
+../configure --prefix=/usr                            \
+             --disable-werror                         \
+             --enable-kernel=3.2                      \
+             --enable-stack-protector=strong          \
+             --with-headers=/usr/include              \
+             libc_cv_slibdir=/usr/lib
+             
+make
+make check
+
+#防止警告
+touch /etc/ld.so.conf
+
+#修正Makefile
+sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
+make install
+
+#改正 ldd 脚本中硬编码的可执行文件加载器路径
+sed '/RTLDLIST=/s@/usr@@g' -i /usr/bin/ldd
+
+#安装 nscd 的配置文件和运行时目录
+cp -v ../nscd/nscd.conf /etc/nscd.conf
+mkdir -pv /var/cache/nscd
+
+#安装 nscd 的 systemd 支持文件
+install -v -Dm644 ../nscd/nscd.tmpfiles /usr/lib/tmpfiles.d/nscd.conf
+install -v -Dm644 ../nscd/nscd.service /usr/lib/systemd/system/nscd.service
+
+#安装一些 locale，它们可以使得系统用不同语言响应用户请求
+mkdir -pv /usr/lib/locale
+localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+localedef -i cs_CZ -f UTF-8 cs_CZ.UTF-8
+localedef -i de_DE -f ISO-8859-1 de_DE
+localedef -i de_DE@euro -f ISO-8859-15 de_DE@euro
+localedef -i de_DE -f UTF-8 de_DE.UTF-8
+localedef -i el_GR -f ISO-8859-7 el_GR
+localedef -i en_GB -f ISO-8859-1 en_GB
+localedef -i en_GB -f UTF-8 en_GB.UTF-8
+localedef -i en_HK -f ISO-8859-1 en_HK
+localedef -i en_PH -f ISO-8859-1 en_PH
+localedef -i en_US -f ISO-8859-1 en_US
+localedef -i en_US -f UTF-8 en_US.UTF-8
+localedef -i es_ES -f ISO-8859-15 es_ES@euro
+localedef -i es_MX -f ISO-8859-1 es_MX
+localedef -i fa_IR -f UTF-8 fa_IR
+localedef -i fr_FR -f ISO-8859-1 fr_FR
+localedef -i fr_FR@euro -f ISO-8859-15 fr_FR@euro
+localedef -i fr_FR -f UTF-8 fr_FR.UTF-8
+localedef -i is_IS -f ISO-8859-1 is_IS
+localedef -i is_IS -f UTF-8 is_IS.UTF-8
+localedef -i it_IT -f ISO-8859-1 it_IT
+localedef -i it_IT -f ISO-8859-15 it_IT@euro
+localedef -i it_IT -f UTF-8 it_IT.UTF-8
+localedef -i ja_JP -f EUC-JP ja_JP
+localedef -i ja_JP -f SHIFT_JIS ja_JP.SIJS 2> /dev/null || true
+localedef -i ja_JP -f UTF-8 ja_JP.UTF-8
+localedef -i nl_NL@euro -f ISO-8859-15 nl_NL@euro
+localedef -i ru_RU -f KOI8-R ru_RU.KOI8-R
+localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
+localedef -i se_NO -f UTF-8 se_NO.UTF-8
+localedef -i ta_IN -f UTF-8 ta_IN.UTF-8
+localedef -i tr_TR -f UTF-8 tr_TR.UTF-8
+localedef -i zh_CN -f GB18030 zh_CN.GB18030
+localedef -i zh_HK -f BIG5-HKSCS zh_HK.BIG5-HKSCS
+localedef -i zh_TW -f UTF-8 zh_TW.UTF-8
+
+#后续会进行安装的两个locale
+localedef -i POSIX -f UTF-8 C.UTF-8 2> /dev/null || true
+localedef -i ja_JP -f SHIFT_JIS ja_JP.SIJS 2> /dev/null || true
+```
+
+**配置Glibc**
+
+由于 Glibc 的默认值在网络环境下不能很好地工作，需要创建配置文件/etc/nsswitch.conf。
+
+```shell
+cat > /etc/nsswitch.conf << "EOF"
+# Begin /etc/nsswitch.conf
+
+passwd: files
+group: files
+shadow: files
+
+hosts: files dns
+networks: files
+
+protocols: files
+services: files
+ethers: files
+rpc: files
+
+# End /etc/nsswitch.conf
+EOF
+```
+
+添加时区数据。
+
+```shell
+tar -xf ../../tzdata2021a.tar.gz
+
+ZONEINFO=/usr/share/zoneinfo
+mkdir -pv $ZONEINFO/{posix,right}
+
+for tz in etcetera southamerica northamerica europe africa antarctica  \
+          asia australasia backward; do
+    zic -L /dev/null   -d $ZONEINFO       ${tz}
+    zic -L /dev/null   -d $ZONEINFO/posix ${tz}
+    zic -L leapseconds -d $ZONEINFO/right ${tz}
+done
+
+cp -v zone.tab zone1970.tab iso3166.tab $ZONEINFO
+zic -d $ZONEINFO -p America/New_York
+unset ZONEINFO
+
+#运行脚本以确定时区
+tzselect
+
+#创建/etc/localtime
+ln -sfv /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+```
+
+配置动态加载器。
+
+```shell
+cat > /etc/ld.so.conf << "EOF"
+# Begin /etc/ld.so.conf
+/usr/local/lib
+/opt/lib
+
+EOF
+
+cat >> /etc/ld.so.conf << "EOF"
+# Add an include directory
+include /etc/ld.so.conf.d/*.conf
+
+EOF
+mkdir -pv /etc/ld.so.conf.d
+
+cd ../..
+rm -rf glibc-2.34
+```
+
+#### 8.4 zlib-1.2.11
+
+Zlib软件包包含一些程序使用的压缩和解压缩子程序。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：5.0 MB
+
+```shell
+cd $LFS/sources
+tar -xvf zlib-1.2.11.tar.xz
+cd zlib-1.2.11
+
+./configure --prefix=/usr
+make
+make check
+make install
+rm -fv /usr/lib/libz.a
+
+cd ..
+rm -rf zlib-1.2.11
+```
+
+#### 8.5 Bzip2-1.0.8
+
+Bzip2软件包包含用于压缩和解压缩文件的程序。使用bzip2压缩文本文件可以获得比传统的 gzip优秀许多的压缩比。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：7.2 MB
+
+```shell
+cd $LFS/sources
+tar -xvf bzip2-1.0.8.tar.gz
+cd bzip2-1.0.8
+
+#应用补丁
+patch -Np1 -i ../bzip2-1.0.8-install_docs-1.patch
+
+#保证安装的符号链接是相对的
+sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+
+#确保man页面被安装到正确位置
+sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+
+#准备编译
+make -f Makefile-libbz2_so
+make clean
+
+make
+make PREFIX=/usr install
+cp -av libbz2.so.* /usr/lib
+ln -sv libbz2.so.1.0.8 /usr/lib/libbz2.so
+
+cp -v bzip2-shared /usr/bin/bzip2
+for i in /usr/bin/{bzcat,bunzip2}; do
+  ln -sfv bzip2 $i
+done
+
+rm -fv /usr/lib/libbz2.a
+
+cd ..
+rm -rf bzip2-1.0.8
+```
+
+#### 8.6 Xz-5.2.5
+
+Xz软件包包含文件压缩和解压缩工具，它能够处理lzma和新的xz压缩文件格式。使用xz压缩文本文件，可以得到比传统的gzip或bzip2更好的压缩比。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf xz-5.2.5.tar.xz
+
+cd xz-5.2.5
+
+#准备编译
+./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/xz-5.2.5
+            
+make
+make check
+make install
+
+cd ..
+rm -rf xz-5.2.5
+```
+
+#### 8.7 Zstd-1.5.0
+
+Zstandard是一种实时压缩算法，提供了较高的压缩比。它具有很宽的压缩比/速度权衡范围，同时支持具有非常快速的解压缩。
+
+估计构建时间：1.4 SBU
+
+需要硬盘空间：60 MB
+
+```shell
+cd $LFS/sources
+tar -xvf zstd-1.5.0.tar.gz
+cd zstd-1.5.0
+
+make
+make check
+
+make prefix=/usr install
+rm -v /usr/lib/libzstd.a
+
+cd ..
+rm -rf zstd-1.5.0
+```
+
+#### 8.8 File-5.40
+
+File软件包包含用于确定给定文件类型的工具。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf file-5.40.tar.gz
+cd file-5.40
+
+./configure --prefix=/usr
+make
+make check
+make install
+
+cd ..
+rm -rf file-5.40
+```
+
+#### 8.9 Readline-8.1
+
+Readline软件包包含一些提供命令行编辑和历史记录功能的库。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf readline-8.1.tar.gz 
+cd readline-8.1
+
+sed -i '/MV.*old/d' Makefile.in
+sed -i '/{OLDSUFF}/c:' support/shlib-install
+
+./configure --prefix=/usr    \
+            --disable-static \
+            --with-curses    \
+            --docdir=/usr/share/doc/readline-8.1
+            
+make SHLIB_LIBS="-lncursesw"
+make SHLIB_LIBS="-lncursesw" install
+install -v -m644 doc/*.{ps,pdf,html,dvi} /usr/share/doc/readline-8.1
+
+cd ..
+rm -rf readline-8.1
+```
+
+#### 8.10 M4-1.4.19
+
+M4软件包包含一个宏处理器。
+
+估计构建时间：0.7 SBU
+
+需要硬盘空间：48 MB
+
+```shell
+cd $LFS/sources
+tar -xvf m4-1.4.19.tar.xz
+cd m4-1.4.19
+
+./configure --prefix=/usr
+make
+make check
+make install
+
+cd ..
+rm -rf m4-1.4.19
+```
+
+#### 8.11 Bc-5.0.0
+
+Bc软件包包含一个任意精度数值处理语言。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：6.7 MB
+
+```shell
+cd $LFS/sources
+tar -xvf bc-5.0.0.tar.xz
+cd bc-5.0.0
+
+CC=gcc ./configure --prefix=/usr -G -O3
+make
+make test
+make install
+
+cd ..
+rm -rf bc-5.0.0
+```
+
+#### 8.12 Flex-2.6.4
+
+Flex软件包包含一个工具，用于生成在文本中识别模式的程序。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：32 MB
+
+```shell
+cd $LFS/sources
+tar -xvf flex-2.6.4.tar.gz
+cd flex-2.6.4
+
+#准备编译
+./configure --prefix=/usr \
+            --docdir=/usr/share/doc/flex-2.6.4 \
+            --disable-static
+            
+make 
+make check
+make install
+
+ln -sv flex /usr/bin/lex
+cd ..
+rm -rf flex-2.6.4
+```
+
+#### 8.13 Tcl-8.6.11
+
+Tcl软件包包含工具命令语言，它是一个可靠的通用脚本语言。Except软件包是用Tcl语言编写的。
+
+```shell
+cd $LFS/sources
+tar -xvf tcl8.6.11-src.tar.gz 
+cd tcl8.6.11
+
+#解压文档
+tar -xf ../tcl8.6.11-html.tar.gz --strip-components=1
+
+SRCDIR=$(pwd)
+cd unix
+./configure --prefix=/usr           \
+            --mandir=/usr/share/man \
+            $([ "$(uname -m)" = x86_64 ] && echo --enable-64bit)
+            
+#构建该软件包
+make
+
+sed -e "s|$SRCDIR/unix|/usr/lib|" \
+    -e "s|$SRCDIR|/usr/include|"  \
+    -i tclConfig.sh
+
+sed -e "s|$SRCDIR/unix/pkgs/tdbc1.1.2|/usr/lib/tdbc1.1.2|" \
+    -e "s|$SRCDIR/pkgs/tdbc1.1.2/generic|/usr/include|"    \
+    -e "s|$SRCDIR/pkgs/tdbc1.1.2/library|/usr/lib/tcl8.6|" \
+    -e "s|$SRCDIR/pkgs/tdbc1.1.2|/usr/include|"            \
+    -i pkgs/tdbc1.1.2/tdbcConfig.sh
+
+sed -e "s|$SRCDIR/unix/pkgs/itcl4.2.1|/usr/lib/itcl4.2.1|" \
+    -e "s|$SRCDIR/pkgs/itcl4.2.1/generic|/usr/include|"    \
+    -e "s|$SRCDIR/pkgs/itcl4.2.1|/usr/include|"            \
+    -i pkgs/itcl4.2.1/itclConfig.sh
+
+unset SRCDIR
+
+make test
+make install
+chmod -v u+w /usr/lib/libtcl8.6.so
+make install-private-headers
+ln -sfv tclsh8.6 /usr/bin/tclsh
+mv /usr/share/man/man3/{Thread,Tcl_Thread}.3
+
+cd ../..
+rm -rf tcl8.6.11
+```
+
+#### 8.14 Expect-5.45.4
+
+Expect软件包包含通过脚本控制的对话，自动化telnet，ftp，passwd，fsck，rlogin，以及tip等交互应用的工具。Expect对于测试这类程序也很有用，它简化了这类通过其他方式很难完成的工作。DejaGnu框架是使用Expect编写的。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：3.9 MB
+
+```shell
+cd $LFS/sources
+tar -xvf expect5.45.4.tar.gz 
+cd expect5.45.4
+
+#准备编译
+./configure --prefix=/usr           \
+            --with-tcl=/usr/lib     \
+            --enable-shared         \
+            --mandir=/usr/share/man \
+            --with-tclinclude=/usr/include
+            
+make
+make test
+make install
+ln -svf expect5.45.4/libexpect5.45.4.so /usr/lib
+
+cd ..
+rm -rf expect5.45.4
+```
+
+#### 8.15 DejaGNU-1.6.3
+
+DejaGnu包含使用GNU工具运行测试套件的框架。它是用expect编写的，后者又使用Tcl(工具命令语言)。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：6.9 MB
+
+```shell
+cd $LFS/sources
+tar -xvf dejagnu-1.6.3.tar.gz 
+cd dejagnu-1.6.3
+
+mkdir -v build
+cd build
+
+../configure --prefix=/usr
+makeinfo --html --no-split -o doc/dejagnu.html ../doc/dejagnu.texi
+makeinfo --plaintext       -o doc/dejagnu.txt  ../doc/dejagnu.texi
+
+make install
+install -v -dm755  /usr/share/doc/dejagnu-1.6.3
+install -v -m644   doc/dejagnu.{html,txt} /usr/share/doc/dejagnu-1.6.3
+
+make check
+
+cd ../..
+rm -rf dejagnu-1.6.3
+```
+
+#### 8.16 Binutils-2.37
+
+Binutils包含汇编器、链接器以及其他用于处理目标文件的工具。
+
+估计构建时间：6.3 SBU
+
+需要硬盘空间：4.5 GB
+
+```shell
+cd $LFS/sources
+tar -xvf binutils-2.37.tar.xz 
+cd binutils-2.37
+
+#进行简单测试，确认伪终端在chroot环境中能正常工作（应输出spawn ls）
+expect -c "spawn ls"
+
+#应用补丁
+patch -Np1 -i ../binutils-2.37-upstream_fix-1.patch
+
+sed -i '63d' etc/texi2pod.pl
+find -name \*.1 -delete
+
+mkdir -v build
+cd build
+
+../configure --prefix=/usr       \
+             --enable-gold       \
+             --enable-ld=default \
+             --enable-plugins    \
+             --enable-shared     \
+             --disable-werror    \
+             --enable-64-bit-bfd \
+             --with-system-zlib
+             
+make tooldir=/usr
+make -k check
+make tooldir=/usr install -j1
+rm -fv /usr/lib/lib{bfd,ctf,ctf-nobfd,opcodes}.a
+
+cd ../..
+rm -rf binutils-2.37
+```
+
+#### 8.17 GMP-6.2.1
+
+GMP软件包包含提供任意精度算术函数的数学库。
+
+估计构建时间：1.0 SBU
+
+需要硬盘空间：52 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gmp-6.2.1.tar.xz
+cd gmp-6.2.1
+
+./configure --prefix=/usr    \
+            --enable-cxx     \
+            --disable-static \
+            --docdir=/usr/share/doc/gmp-6.2.1
+            
+make
+make html
+
+make check 2>&1 | tee gmp-check-log
+awk '/# PASS:/{total+=$3} ; END{print total}' gmp-check-log
+
+make install
+make install-html
+
+cd ..
+rm -rf gmp-6.2.1
+```
+
+#### 8.18 MPFR-4.1.0
+
+MPFR软件包包含多精度数学函数。
+
+估计构建时间：0.8 SBU
+
+需要硬盘空间：38 MB
+
+```shell
+cd $LFS/sources
+tar -xvf mpfr-4.1.0.tar.xz
+cd mpfr-4.1.0
+
+#准备编译
+./configure --prefix=/usr        \
+            --disable-static     \
+            --enable-thread-safe \
+            --docdir=/usr/share/doc/mpfr-4.1.0
+            
+make
+make html
+make check
+make install
+make install-html
+
+cd ..
+rm -rf mpfr-4.1.0
+```
+
+#### 8.19 MPC-1.2.1
+
+MPC软件包包含一个任意高精度，且舍入正确的复数算术库。
+
+估计构建时间：0.3 SBU
+
+需要硬盘空间：21 MB
+
+```shell
+cd $LFS/sources
+tar -xvf mpc-1.2.1.tar.gz
+cd mpc-1.2.1
+
+#准备编译
+./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/mpc-1.2.1
+            
+make
+make html
+make check
+make install
+make install-html
+
+cd ..
+rm -rf mpc-1.2.1
+```
+
+#### 8.20 Attr-2.5.1
+
+Attr软件包包含管理文件系统对象扩展属性的工具。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：4.1 MB
+
+```shell
+cd $LFS/sources
+tar -xvf attr-2.5.1.tar.gz
+cd attr-2.5.1
+
+#准备编译
+./configure --prefix=/usr     \
+            --disable-static  \
+            --sysconfdir=/etc \
+            --docdir=/usr/share/doc/attr-2.5.1
+            
+make
+make check
+make install
+
+cd ..
+rm -rf attr-2.5.1
+```
 
