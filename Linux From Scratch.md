@@ -2265,3 +2265,270 @@ cd ..
 rm -rf attr-2.5.1
 ```
 
+#### 8.21 Acl-2.3.1
+
+Acl软件包包含管理访问控制列表的工具，访问控制列表能够更细致地自由定义文件和目录的访问权限。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：6.1 MB
+
+```shell
+cd $LFS/sources
+tar -xvf acl-2.3.1.tar.xz
+cd acl-2.3.1
+
+#准备编译
+./configure --prefix=/usr         \
+            --disable-static      \
+            --docdir=/usr/share/doc/acl-2.3.1
+            
+make
+make install
+
+cd ..
+rm -rf acl-2.3.1
+```
+
+#### 8.22 Libcap-2.53
+
+Libcap软件包为Linux内核提供的POSIX 1003.1e权能字实现用户接口。这些权能字是 root用户的最高特权分割成的一组不同权限。
+
+```shell
+cd $LFS/sources
+tar -xvf libcap-2.53.tar.xz
+cd libcap-2.53
+
+#防止静态库的安装
+sed -i '/install -m.*STA/d' libcap/Makefile
+
+make prefix=/usr lib=lib
+make test
+make prefix=/usr lib=lib install
+chmod -v 755 /usr/lib/lib{cap,psx}.so.2.53
+
+cd ..
+rm -rf libcap-2.53
+```
+
+#### 8.23 Shadow-4.9
+
+Shadow软件包包含安全地处理密码的程序。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：45 MB
+
+```shell
+cd $LFS/sources
+tar -xvf shadow-4.9.tar.xz
+cd shadow-4.9
+
+#避免安装已提供的man页面
+sed -i 's/groups$(EXEEXT) //' src/Makefile.in
+find man -name Makefile.in -exec sed -i 's/groups\.1 / /'   {} \;
+find man -name Makefile.in -exec sed -i 's/getspnam\.3 / /' {} \;
+find man -name Makefile.in -exec sed -i 's/passwd\.5 / /'   {} \;
+
+#修复错误
+sed -e "224s/rounds/min_rounds/" -i libmisc/salt.c
+
+#准备编译
+touch /usr/bin/passwd
+./configure --sysconfdir=/etc \
+            --with-group-name-max-length=32
+            
+make
+make exec_prefix=/usr install
+make -C man install-man
+mkdir -p /etc/default
+useradd -D --gid 999
+
+#下面进行配置shadow
+
+#对用户密码启用shadow加密
+pwconv
+
+#对组密码启用shadow加密
+grpconv
+
+#设定root密码
+passwd root
+
+cd ..
+rm -rf shadow-4.9
+```
+
+#### 8.24 GCC-11.2.0
+
+GCC软件包包含 GNU 编译器集合，其中有C和C++编译器。
+
+估计构建时间：164 SBU
+
+需要硬盘空间：4.3 GB
+
+```shell
+cd $LFS/sources
+tar -xvf gcc-11.2.0.tar.xz
+cd gcc-11.2.0
+
+#修复一些问题
+sed -e '/static.*SIGSTKSZ/d' \
+    -e 's/return kAltStackSize/return SIGSTKSZ * 4/' \
+    -i libsanitizer/sanitizer_common/sanitizer_posix_libcdep.cpp
+    
+#修改存放64位库的默认路径为“lib”
+case $(uname -m) in
+  x86_64)
+    sed -e '/m64=/s/lib64/lib/' \
+        -i.orig gcc/config/i386/t-linux64
+  ;;
+esac
+
+mkdir -v build
+cd build
+
+#准备编译
+../configure --prefix=/usr            \
+             LD=ld                    \
+             --enable-languages=c,c++ \
+             --disable-multilib       \
+             --disable-bootstrap      \
+             --with-system-zlib
+             
+make
+
+#增加栈空间
+ulimit -s 32768
+
+#以非特权用户身份测试编译结果
+chown -Rv tester . 
+su tester -c "PATH=$PATH make -k check"
+
+#查看测试结果的摘要
+../contrib/test_summary
+
+#安装软件包，并移除一个不需要的目录
+make install
+rm -rf /usr/lib/gcc/$(gcc -dumpmachine)/11.2.0/include-fixed/bits/
+
+#将GCC的所有者修改为root用户和组
+chown -v -R root:root \
+    /usr/lib/gcc/*linux-gnu/11.2.0/include{,-fixed}
+    
+ln -svr /usr/bin/cpp /usr/lib
+ln -sfv ../../libexec/gcc/$(gcc -dumpmachine)/11.2.0/liblto_plugin.so \
+        /usr/lib/bfd-plugins/
+        
+echo 'int main(){}' > dummy.c
+cc dummy.c -v -Wl,--verbose &> dummy.log
+readelf -l a.out | grep ': /lib'
+
+grep -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+
+grep -B4 '^ /usr/include' dummy.log
+
+grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
+
+grep "/lib.*/libc.so.6 " dummy.log
+
+grep found dummy.log
+
+#删除测试文件
+rm -v dummy.c a.out dummy.log
+
+#移动一个位置不正确的文件
+mkdir -pv /usr/share/gdb/auto-load/usr/lib
+mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
+
+cd ../..
+rm -rf gcc-11.2.0
+```
+
+#### 8.25 Pkg-config-0.29.2
+
+pkg-config软件包提供一个在软件包安装的配置和编译阶段，向构建工具传递头文件和/或库文件路径的工具。
+
+估计构建时间：0.3 SBU
+
+需要硬盘空间：29 MB
+
+```shell
+cd $LFS/sources
+tar -xvf pkg-config-0.29.2.tar.gz
+cd pkg-config-0.29.2
+
+#准备编译
+./configure --prefix=/usr              \
+            --with-internal-glib       \
+            --disable-host-tool        \
+            --docdir=/usr/share/doc/pkg-config-0.29.2
+            
+make
+make check
+make install
+
+cd ..
+rm -rf pkg-config-0.29.2
+```
+
+#### 8.26 Ncurses-6.2
+
+Ncurses软件包包含使用时不需考虑终端特性的字符屏幕处理函数库。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：34 MB
+
+```shell
+cd $LFS/sources
+tar -xvf ncurses-6.2.tar.gz
+cd ncurses-6.2
+
+#准备编译
+./configure --prefix=/usr           \
+            --mandir=/usr/share/man \
+            --with-shared           \
+            --without-debug         \
+            --without-normal        \
+            --enable-pc-files       \
+            --enable-widec
+            
+make
+make install
+
+#通过使用符号链接和链接脚本，诱导它们链接到宽字符库
+for lib in ncurses form panel menu ; do
+    rm -vf                    /usr/lib/lib${lib}.so
+    echo "INPUT(-l${lib}w)" > /usr/lib/lib${lib}.so
+    ln -sfv ${lib}w.pc        /usr/lib/pkgconfig/${lib}.pc
+done
+
+#确保那些在构建时寻找 -lcurses 的老式程序仍然能够构建
+rm -vf                     /usr/lib/libcursesw.so
+echo "INPUT(-lncursesw)" > /usr/lib/libcursesw.so
+ln -sfv libncurses.so      /usr/lib/libcurses.so
+
+#删除一个 configure 脚本未处理的静态库
+rm -fv /usr/lib/libncurses++w.a
+
+#安装Ncurses文档
+mkdir -v       /usr/share/doc/ncurses-6.2
+cp -v -R doc/* /usr/share/doc/ncurses-6.2
+
+cd ..
+rm -rf ncurses-6.2
+```
+
+#### 8.27 Sed-4.8
+
+Sed软件包包含一个流编辑器。
+
+估计构建时间：0.5 SBU
+
+需要硬盘空间：30 MB
+
+```shell
+
+```
+
