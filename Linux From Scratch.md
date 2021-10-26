@@ -2529,6 +2529,185 @@ Sed软件包包含一个流编辑器。
 需要硬盘空间：30 MB
 
 ```shell
+cd $LFS/sources
+tar -xvf sed-4.8.tar.xz
+cd sed-4.8
 
+#准备编译
+./configure --prefix=/usr
+
+make
+make html
+
+#测试编译结果
+chown -Rv tester .
+su tester -c "PATH=$PATH make check"
+
+#安装该软件机器文档
+make install
+install -d -m755           /usr/share/doc/sed-4.8
+install -m644 doc/sed.html /usr/share/doc/sed-4.8
+
+cd ,,
+rm -rf sed-4.8
+```
+
+#### 8.28 Psmisc-23.4
+
+Psmisc软件包包含显示正在运行的进程信息的程序。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：5.6 MB
+
+```shell
+cd $LFS/sources
+tar -xvf psmisc-23.4.tar.xz
+cd psmisc-23.4
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make install
+
+cd ..
+rm -rf psmisc-23.4
+```
+
+#### 8.29 Gettext-0.21
+
+Gettext软件包包含国际化和本地化工具，它们允许程序在编译时加入NLS(本地语言支持) 功能，使它们能够以用户的本地语言输出消息。
+
+估计构建时间：2.9 SBU
+
+需要硬盘空间：231 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gettext-0.21.tar.xz
+cd gettext-0.21
+
+#准备编译
+./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/gettext-0.21
+            
+make
+make check
+make install
+chmod -v 0755 /usr/lib/preloadable_libintl.so
+
+cd ..
+rm -rf gettext-0.21
+```
+
+#### 8.30 Bison-3.7.6
+
+估计构建时间：6.3 SBU
+
+需要硬盘空间：53 MB
+
+```shell
+cd $LFS/sources
+tar -xvf bison-3.7.6.tar.xz
+cd bison-3.7.6
+
+#准备编译
+./configure --prefix=/usr --docdir=/usr/share/doc/bison-3.7.6
+
+make
+make check
+make install
+
+cd ..
+rm -rf bison-3.7.6
+```
+
+#### 8.31 Grep-3.7
+
+Grep软件包包含在文件内容中进行搜索的程序。
+
+估计构建时间：0.8 SBU
+
+需要硬盘空间：36 MB
+
+```shell
+cd $LFS/sources
+tar -xvf grep-3.7.tar.xz
+cd grep-3.7
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf grep-3.7
+```
+
+#### 8.32 Bash-5.1.8
+
+Bash软件包包含Bourne-Again SHell。
+
+估计构建时间：1.6 SBU
+
+需要硬盘空间：50 MB
+
+```shell
+cd $LFS/sources
+tar -xvf bash-5.1.8.tar.gz
+cd bash-5.1.8
+
+#准备编译
+./configure --prefix=/usr                      \
+            --docdir=/usr/share/doc/bash-5.1.8 \
+            --without-bash-malloc              \
+            --with-installed-readline
+
+make
+chown -Rv tester .
+
+#测试
+su -s /usr/bin/expect tester << EOF
+set timeout -1
+spawn make tests
+expect eof
+lassign [wait] _ _ _ value
+exit $value
+EOF
+
+make install
+exec /bin/bash --login +h
+
+cd ..
+rm -rf bash-5.1.8
+```
+
+#### 8.33 Libtool-2.4.6
+
+Libtool软件包包含GNU通用库支持脚本。它在一个一致、可移植的接口下隐藏了使用共享库的复杂性。
+
+估计构建时间：1.5 SBU
+
+需要硬盘空间：43 MB
+
+```shell
+cd $LFS/sources
+tar -xvf libtool-2.4.6.tar.xz
+cd libtool-2.4.6
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check TESTSUITEFLAGS=-j4
+make install
+
+rm -fv /usr/lib/libltdl.a
+cd ..
+rm -rf libtool-2.4.6
 ```
 
