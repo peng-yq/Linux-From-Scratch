@@ -2711,3 +2711,1223 @@ cd ..
 rm -rf libtool-2.4.6
 ```
 
+#### 8.34 GDBM-1.20
+
+GDBM软件包包含GNU数据库管理器。它是一个使用可扩展散列的数据库函数库，工作方法和标准UNIX dbm类似。该库提供用于存储键值对、通过键搜索和获取数据，以及删除键和对应数据的原语。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：11 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gdbm-1.20.tar.gz
+cd gbdm-1.20
+
+#准备编译
+./configure --prefix=/usr    \
+            --disable-static \
+            --enable-libgdbm-compat
+            
+make
+make -k check
+make install
+
+cd ..
+rm -rf gbdm-1.20
+```
+
+#### 8.35 Gperf-3.1
+
+Gperf根据一组键值，生成完美散列函数。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：6.0 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gperf-3.1.tar.gz
+cd gperf-3.1
+
+#准备编译
+./configure --prefix=/usr --docdir=/usr/share/doc/gperf-3.1
+
+make
+make -j1 check
+make install
+
+cd ..
+rm -rf gperf-3.1
+```
+
+#### 8.36 Expat-2.4.1
+
+Expat软件包包含用于解析XML文件的面向流的C语言库。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：13 MB
+
+```shell
+cd $LFS/sources
+tar -xvf expat-2.4.1.tar.xz
+cd expat-2.4.1
+
+#准备编译
+./configure --prefix=/usr    \
+            --disable-static \
+            --docdir=/usr/share/doc/expat-2.4.1
+            
+make
+make check
+make install
+
+install -v -m644 doc/*.{html,png,css} /usr/share/doc/expat-2.4.1
+
+cd ..
+rm -rf expat-2.4.1
+```
+
+#### 8.37 Inetutils-2.1
+
+Inetutils软件包包含基本网络程序。
+
+估计构建时间：0.3 SBU
+
+需要硬盘空间：30 MB
+
+```shell
+cd $LFS/sources
+tar -xvf inetutils-2.1.tar.xz
+cd inetutils-2.1
+
+#准备编译
+./configure --prefix=/usr        \
+            --bindir=/usr/bin    \
+            --localstatedir=/var \
+            --disable-logger     \
+            --disable-whois      \
+            --disable-rcp        \
+            --disable-rexec      \
+            --disable-rlogin     \
+            --disable-rsh        \
+            --disable-servers
+            
+make
+make check
+make install
+mv -v /usr/{,s}bin/ifconfig
+
+cd ..
+rm -rf inetutils-2.1
+```
+
+#### 8.38 Less-590
+
+Less软件包包含一个文本文件查看器。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：4.2 MB
+
+```shell
+cd $LFS/sources
+tar -xvf less-590.tar.gz
+cd less-590
+
+#准备编译
+./configure --prefix=/usr --sysconfdir=/etc
+
+make
+make install
+
+cd ..
+rm -rf less-590
+```
+
+#### 8.39 Perl-5.34.0
+
+Perl软件包包含实用报表提取语言。
+
+估计构建时间：10 SBU
+
+需要硬盘空间：226 MB
+
+```shell
+cd $LFS/sources
+tar -xvf perl-5.34.0.tar.xz
+cd perl-5.34.0
+
+#应用补丁
+patch -Np1 -i ../perl-5.34.0-upstream_fixes-1.patch
+
+export BUILD_ZLIB=False
+export BUILD_BZIP2=0
+
+sh Configure -des                                         \
+             -Dprefix=/usr                                \
+             -Dvendorprefix=/usr                          \
+             -Dprivlib=/usr/lib/perl5/5.34/core_perl      \
+             -Darchlib=/usr/lib/perl5/5.34/core_perl      \
+             -Dsitelib=/usr/lib/perl5/5.34/site_perl      \
+             -Dsitearch=/usr/lib/perl5/5.34/site_perl     \
+             -Dvendorlib=/usr/lib/perl5/5.34/vendor_perl  \
+             -Dvendorarch=/usr/lib/perl5/5.34/vendor_perl \
+             -Dman1dir=/usr/share/man/man1                \
+             -Dman3dir=/usr/share/man/man3                \
+             -Dpager="/usr/bin/less -isR"                 \
+             -Duseshrplib                                 \
+             -Dusethreads
+             
+make
+make test
+make install
+unset BUILD_ZLIB BUILD_BZIP2
+
+cd ..
+rm -rf perl-5.34.0
+```
+
+#### 8.40 XML::Parser-2.46
+
+XML::Parser模块是James Clark的XML解析器Expat的Perl接口。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：2.4 MB
+
+```shell
+cd $LFS/sources
+tar -xvf XML-Parser-2.46.tar.gz
+cd XML-Parser-2.46
+
+#准备编译
+perl Makefile.PL
+
+make
+make test
+make install
+
+cd ..
+rm -rf XML-Parser-2.46
+```
+
+#### 8.41 Intltool-0.51.0
+
+Intltool是一个从源代码文件中提取可翻译字符串的国际化工具。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：1.5 MB
+
+```shell
+cd $LFS/sources
+tar -xvf intltool-0.51.0.tar.gz
+cd intltool-0.51.0
+
+#修复警告
+sed -i 's:\\\${:\\\$\\{:' intltool-update.in
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+install -v -Dm644 doc/I18N-HOWTO /usr/share/doc/intltool-0.51.0/I18N-HOWTO
+
+cd ..
+rm -rf intltool-0.51.0
+```
+
+#### 8.42 Autoconf-2.71
+
+Autoconf软件包包含生成能自动配置软件包的shell脚本的程序。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：24 MB
+
+```shell
+cd $LFS/sources
+tar -xvf autoconf-2.71.tar.xz
+cd autoconf-2.71
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf autoconf-2.71
+```
+
+#### 8.43 Automake-1.16.4
+
+Automake软件包包含自动生成Makefile，以便和Autoconf一同使用的程序。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：115 MB
+
+```shell
+cd $LFS/sources
+tar -xvf automake-1.16.4.tar.xz
+cd automake-1.16.4
+
+#准备编译
+./configure --prefix=/usr --docdir=/usr/share/doc/automake-1.16.4
+
+make
+make -j4 check
+make install
+
+cd ..
+rm -rf automake-1.16.4
+```
+
+#### 8.44 Kmod-29
+
+Kmod软件包包含用于加载内核模块的库和工具。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：12 MB
+
+```shell
+cd $LFS/sources
+tar -xvf kmod-29.tar.xz
+cd kmod-29
+
+#准备编译
+./configure --prefix=/usr          \
+            --sysconfdir=/etc      \
+            --with-xz              \
+            --with-zstd            \
+            --with-zlib
+            
+make
+
+make install
+
+for target in depmod insmod modinfo modprobe rmmod; do
+  ln -sfv ../bin/kmod /usr/sbin/$target
+done
+
+ln -sfv kmod /usr/bin/lsmod
+
+cd ..
+rm -rf kmod-29
+```
+
+#### 8.45 Elfutils-0.185 中的 Libelf
+
+Libelf是一个处理ELF(可执行和可链接格式) 文件的库。
+
+估计构建时间：0.9 SBU
+
+需要硬盘空间：115 MB
+
+```shell
+cd $LFS/sources
+tar -xvf elfutils-0.185.tar.bz2
+cd elfutils-0.185
+
+#准备编译
+./configure --prefix=/usr                \
+            --disable-debuginfod         \
+            --enable-libdebuginfod=dummy
+            
+make
+make check
+
+make -C libelf install
+install -vm644 config/libelf.pc /usr/lib/pkgconfig
+rm /usr/lib/libelf.a
+
+cd ..
+rm -rf elfutils-0.185
+```
+
+#### 8.46 Libffi-3.4.2
+
+Libffi库提供一个可移植的高级编程接口，用于处理不同调用惯例。这允许程序在运行时调用任何给定了调用接口的函数。
+
+估计构建时间：2.0 SBU
+
+需要硬盘空间：10 MB
+
+```shell
+cd $LFS/sources
+tar -xvf libffi-3.4.2.tar.gz
+cd libffi-3.4.2
+
+#准备编译
+./configure --prefix=/usr          \
+            --disable-static       \
+            --with-gcc-arch=native \
+            --disable-exec-static-tramp
+            
+make
+make check
+make install
+
+cd ..
+rm -rf libffi-3.4.2
+```
+
+#### 8.47 OpenSSL-1.1.1l
+
+OpenSSL软件包包含密码学相关的管理工具和库。它们被用于向其他软件包提供密码学功能，例如OpenSSH，电子邮件程序和Web浏览器 (以访问HTTPS站点)。
+
+估计构建时间：2.2 SBU
+
+需要硬盘空间：154 MB
+
+```shell
+cd $LFS/sources
+tar -xvf openssl-1.1.1l.tar.gz
+cd openssl-1.1.1l
+
+#准备编译
+./config --prefix=/usr         \
+         --openssldir=/etc/ssl \
+         --libdir=lib          \
+         shared                \
+         zlib-dynamic
+         
+make
+make test
+sed -i '/INSTALL_LIBS/s/libcrypto.a libssl.a//' Makefile
+make MANSUFFIX=ssl install
+
+#将版本号添加到文档目录名
+mv -v /usr/share/doc/openssl /usr/share/doc/openssl-1.1.1l
+
+#安装额外文档
+cp -vfr doc/* /usr/share/doc/openssl-1.1.1l
+
+cd ..
+rm -rf openssl-1.1.1l
+```
+
+#### 8.48 Python-3.9.6
+
+Python 3软件包包含Python开发环境。它被用于面向对象编程，编写脚本，为大型程序建立原型，或者开发完整的应用。
+
+估计构建时间：4.4 SBU
+
+需要硬盘空间：260 MB
+
+```shell
+cd $LFS/sources
+tar -xvf Python-3.9.6.tar.xz
+cd  Python-3.9.6
+
+#准备编译
+./configure --prefix=/usr       \
+            --enable-shared     \
+            --with-system-expat \
+            --with-system-ffi   \
+            --with-ensurepip=yes \
+            --enable-optimizations
+            
+make
+make install
+
+install -v -dm755 /usr/share/doc/python-3.9.6/html 
+
+tar --strip-components=1  \
+    --no-same-owner       \
+    --no-same-permissions \
+    -C /usr/share/doc/python-3.9.6/html \
+    -xvf ../python-3.9.6-docs-html.tar.bz2
+    
+cd ..
+rm -rf Python-3.9.6
+```
+
+#### 8.49 Ninja-1.10.2
+
+Ninja是一个注重速度的小型构建系统。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：64 MB
+
+```shell
+cd $LFS/sources
+tar -xvf ninja-1.10.2.tar.gz
+cd ninja-1.10.2
+
+export NINJAJOBS=4
+sed -i '/int Guess/a \
+  int   j = 0;\
+  char* jobs = getenv( "NINJAJOBS" );\
+  if ( jobs != NULL ) j = atoi( jobs );\
+  if ( j > 0 ) return j;\
+' src/ninja.cc
+
+#构建Ninja
+python3 configure.py --bootstrap
+
+#测试编译结果
+./ninja ninja_test
+./ninja_test --gtest_filter=-SubprocessTest.SetWithLots
+
+#安装该软件包
+install -vm755 ninja /usr/bin/
+install -vDm644 misc/bash-completion /usr/share/bash-completion/completions/ninja
+install -vDm644 misc/zsh-completion  /usr/share/zsh/site-functions/_ninja
+
+cd ..
+rm -rf ninja-1.10.2
+```
+
+#### 8.50 Meson-0.59.1
+
+Meson是一个开放源代码构建系统，它的设计保证了非常快的执行速度，和尽可能高的用户友好性。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：40 MB
+
+```shell
+cd $LFS/sources
+tar -xvf meson-0.59.1.tar.gz
+cd meson-0.59.1
+
+#编译
+python3 setup.py build
+
+python3 setup.py install --root=dest
+cp -rv dest/* /
+install -vDm644 data/shell-completions/bash/meson /usr/share/bash-completion/completions/meson
+install -vDm644 data/shell-completions/zsh/_meson /usr/share/zsh/site-functions/_meson
+
+cd ..
+rm -rf meson-0.59.1
+```
+
+#### 8.51 Coreutils-8.32
+
+Coreutils软件包包含用于显示和设定系统基本属性的工具。
+
+估计构建时间：2.6 SBU
+
+需要硬盘空间：153 MB
+
+```shell
+cd $LFS/sources
+tar -xvf coreutils-8.32.tar.xz
+cd coreutils-8.32
+
+#应用补丁
+patch -Np1 -i ../coreutils-8.32-i18n-1.patch
+
+#准备编译
+autoreconf -fiv
+FORCE_UNSAFE_CONFIGURE=1 ./configure \
+            --prefix=/usr            \
+            --enable-no-install-program=kill,uptime
+            
+make
+
+#为root用户进行测试
+make NON_ROOT_USERNAME=tester check-root
+
+echo "dummy:x:102:tester" >> /etc/group
+
+chown -Rv tester . 
+su tester -c "PATH=$PATH make RUN_EXPENSIVE_TESTS=yes check"
+
+#删除临时组
+sed -i '/dummy/d' /etc/group
+make install
+
+#将程序移动到FHS要求的位置
+mv -v /usr/bin/chroot /usr/sbin
+mv -v /usr/share/man/man1/chroot.1 /usr/share/man/man8/chroot.8
+sed -i 's/"1"/"8"/' /usr/share/man/man8/chroot.8
+
+cd ..
+rm -rf coreutils-8.32
+```
+
+#### 8.52 Check-0.15.2
+
+Check是一个C语言单元测试框架。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：12 MB
+
+```shell
+cd $FLS/sources
+tar -xvf check-0.15.2.tar.gz
+cd check-0.15.2
+
+#准备编译
+./configure --prefix=/usr --disable-static
+
+make
+make check
+make docdir=/usr/share/doc/check-0.15.2 install
+
+cd ..
+rm -rf check-0.15.2
+```
+
+#### 8.53 Diffutils-3.8
+
+Diffutils软件包包含显示文件或目录之间差异的程序。
+
+估计构建时间：0.7 SBU
+
+需要硬盘空间：36 MB
+
+```shell
+cd $LFS/sources
+tar -xvf diffutils-3.8.tar.xz
+cd diffutils-3.8
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf diffutils-3.8
+```
+
+#### 8.54 Gawk-5.1.0
+
+Gawk软件包包含操作文本文件的程序。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：42 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gawk-5.1.0.tar.xz
+cd gawk-5.1.0
+
+#确保不安装某些不需要的文件
+sed -i 's/extras//' Makefile.in
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make intsall
+
+#安装文档
+mkdir -v /usr/share/doc/gawk-5.1.0
+cp    -v doc/{awkforai.txt,*.{eps,pdf,jpg}} /usr/share/doc/gawk-5.1.0
+
+cd ..
+rm -rf gawk-5.1.0
+```
+
+#### 8.55 Findutils-4.8.0
+
+Findutils软件包包含用于查找文件的程序。这些程序能够递归地搜索目录树，以及创建、维护和搜索文件数据库 (一般比递归搜索快，但在数据库最近没有更新时不可靠)。
+
+估计构建时间：0.9 SBU
+
+需要硬盘空间：52 MB
+
+```shell
+cd $LFS/sources
+tar -xvf findutils-4.8.0.tar.xz
+cd findutils-4.8.0
+
+#准备编译
+./configure --prefix=/usr --localstatedir=/var/lib/locate
+
+make
+chown -Rv tester .
+su tester -c "PATH=$PATH make check"
+
+make install
+cd ..
+rm -rf findutils-4.8.0
+```
+
+#### 8.56 Groff-1.22.4
+
+Groff软件包包含处理和格式化文本的程序。
+
+估计构建时间：0.5 SBU
+
+需要硬盘空间：88 MB
+
+```shell
+cd $LFS/sources
+tar -xvf groff-1.22.4.tar.gz
+cd groff-1.22.4
+
+#准备编译
+PAGE=A4 ./configure --prefix=/usr
+
+make -j1
+make install
+
+cd ..
+rm -rf groff-1.22.4
+```
+
+#### 8.57 GRUB-2.06
+
+GRUB软件包包含 “大统一” (GRand Unified)启动引导器。
+
+估计构建时间：0.8 SBU
+
+需要硬盘空间：158 MB
+
+```shell
+cd $LFS/sources
+tar -xvf grub-2.06.tar.xz
+cd grub-2.06
+
+#准备编译
+./configure --prefix=/usr          \
+            --sysconfdir=/etc      \
+            --disable-efiemu       \
+            --disable-werror
+            
+make
+make install
+mv -v /etc/bash_completion.d/grub /usr/share/bash-completion/completions
+
+cd ..
+rm -rf grub-2.06
+```
+
+#### 8.58 Gzip-1.10
+
+Gzip软件包包含压缩和解压缩文件的程序。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：19 MB
+
+```shell
+cd $LFS/sources
+tar -xvf gzip-1.10.tar.xz
+cd gzip-1.10
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf gzip-1.10
+```
+
+#### 8.59 IPRoute2-5.13.0
+
+IPRoute2软件包包含基于IPv4的基本和高级网络程序。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：15 MB
+
+```shell
+cd $LFS/sources
+tar -xvf iproute2-5.13.0.tar.xz
+cd iproute2-5.13.0
+
+sed -i /ARPD/d Makefile
+rm -fv man/man8/arpd.8
+
+#禁用模块
+sed -i 's/.m_ipt.o//' tc/Makefile
+
+make
+make SBINDIR=/usr/sbin install
+mkdir -v              /usr/share/doc/iproute2-5.13.0
+cp -v COPYING README* /usr/share/doc/iproute2-5.13.0
+
+cd ..
+rm -rf iproute2-5.13.0
+```
+
+#### 8.60 Kbd-2.4.0
+
+Kbd软件包包含按键表文件、控制台字体和键盘工具。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：33 MB
+
+```shell
+cd $LFS/sources
+tar -xvf kbd-2.4.0.tar.xz
+cd kbd-2.4.0
+
+#补丁修复
+patch -Np1 -i ../kbd-2.4.0-backspace-1.patch
+
+sed -i '/RESIZECONS_PROGS=/s/yes/no/' configure
+sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+
+./configure --prefix=/usr --disable-vlock
+
+make
+make check
+make install
+
+mkdir -v            /usr/share/doc/kbd-2.4.0
+cp -R -v docs/doc/* /usr/share/doc/kbd-2.4.0
+
+cd ..
+rm -rf kbd-2.4.0
+```
+
+#### 8.61 Libpipeline-1.5.3
+
+Libpipeline软件包包含用于灵活、方便地处理子进程流水线的库。
+
+估计构建时间：0.1 SBU
+
+需要硬盘空间：9.1 MB
+
+```shell
+cd $LFS/sources
+tar -xvf libpipeline-1.5.3.tar.gz
+cd libpipeline-1.5.3
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf libpipeline-1.5.3
+```
+
+#### 8.62 Make-4.3
+
+Make软件包包含一个程序，用于控制从软件包源代码生成可执行文件和其他非源代码文件的过程。
+
+估计构建时间：0.6 SBU
+
+需要硬盘空间：13 MB
+
+```shell
+cd $LFS/sources
+tar -xvf make-4.3.tar.gz
+cd make-4.3
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf make-4.3
+```
+
+#### 8.63 Patch-2.7.6
+
+Patch软件包包含通过应用 “补丁” 文件，修改或创建文件的程序，补丁文件通常是diff程序创建的。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：12 MB
+
+```shell
+cd $LFS/sources
+tar -xvf patch-2.7.6.xz
+cd path-2.7.6
+
+#准备编译
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+cd ..
+rm -rf path-2.7.6
+```
+
+#### 8.64 Tar-1.34
+
+Tar软件包提供创建tar归档文件，以及对归档文件进行其他操作的功能。Tar可以对已经创建的归档文件进行提取文件，存储新文件，更新文件，或者列出文件等操作。
+
+估计构建时间：1.9 SBU
+
+需要硬盘空间：40 MB
+
+```shell
+cd $LFS/sources
+tar -xvf tar-1.34.tar.xz
+cd tar-1.34
+
+#准备编译
+FORCE_UNSAFE_CONFIGURE=1  \
+./configure --prefix=/usr
+
+make
+make check
+make install
+
+make -C doc install-html docdir=/usr/share/doc/tar-1.34
+
+cd ..
+rm -rf tar-1.34
+```
+
+#### 8.65 Texinfo-6.8
+
+Texinfo软件包包含阅读、编写和转换info页面的程序。
+
+估计构建时间：0.6 SBU
+
+需要硬盘空间：112 MB
+
+```shell
+cd $LFS/sources
+tar -xvf texinfo-6.8.tar.xz
+cd texinfo-6.8
+
+#准备编译
+./configure --prefix=/usr
+
+#修复已知问题
+sed -e 's/__attribute_nonnull__/__nonnull/' \
+    -i gnulib/lib/malloc/dynarray-skeleton.c
+    
+make
+make check
+make install
+make TEXMF=/usr/share/texmf install-tex
+
+cd ..
+rm -rf texinfo-6.8
+```
+
+#### 8.66 Vim-8.2.3337
+
+Vim软件包包含强大的文本编辑器。
+
+>如果您喜爱其他编辑器 —— 例如 Emacs、Joe、或者 Nano —— 参考 https://www.linuxfromscratch.org/blfs/view/11.0/postlfs/editors.html 中建议的安装说明。
+
+估计构建时间：2.3 SBU
+
+需要硬盘空间：199 MB
+
+```shell
+cd $LFS/sources
+tar -xvf vim-8.2.3337.tar.gz
+cd vim-8.2.3337
+
+#修改默认位置为/etc
+echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
+
+#准备编译
+./configure --prefix=/usr
+
+make
+chown -Rv tester .
+su tester -c "LANG=en_US.UTF-8 make -j1 test" &> vim-test.log
+
+make install
+
+#适配vi
+ln -sv vim /usr/bin/vi
+for L in  /usr/share/man/{,*/}man1/vim.1; do
+    ln -sv vim.1 $(dirname $L)/vi.1
+done
+
+#创建符号链接
+ln -sv ../vim/vim82/doc /usr/share/doc/vim-8.2.3337
+
+cd ..
+rm -rf vim-8.2.3337
+```
+
+#### 8.67 MarkupSafe-2.0.1
+
+MarkupSafe是一个为XML/HTML/XHTML标记语言实现字符串安全处理的Python模块。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：516 KB 
+
+```shell
+cd $LFS/sources
+tar -xvf MarkupSafe-2.0.1.tar.gz 
+cd MarkupSafe-2.0.1
+
+python3 setup.py build
+python3 setup.py install --optimize=1
+
+cd ..
+rm -rf MarkupSafe-2.0.1
+```
+
+#### 8.68 Jinja2-3.0.1
+
+Jinja2是一个实现了简单的，Python风格的模板语言的Python模块。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：3.7 MB
+
+```shell
+cd $LFS/sources
+tar -xvf tar -xvf Jinja2-3.0.1.tar.gz
+cd Jinja2-3.0.1
+
+python3 setup.py install --optimize=1
+
+cd ..
+rm -rf Jinja2-3.0.1
+```
+
+#### 8.69 Systemd-249
+
+Systemd软件包包含控制系统引导、运行和关闭的程序。
+
+估计构建时间：2.7 SBU
+
+需要硬盘空间：277 MB
+
+```shell
+cd $LFS/sources
+tar -xvf systemd-249.tar.gz
+cd systemd-249
+
+#应用补丁修复
+patch -Np1 -i ../systemd-249-upstream_fixes-1.patch
+
+sed -i -e 's/GROUP="render"/GROUP="video"/' \
+        -e 's/GROUP="sgx", //' rules.d/50-udev-default.rules.in
+        
+mkdir -p build
+cd build
+
+LANG=en_US.UTF-8                    \
+meson --prefix=/usr                 \
+      --sysconfdir=/etc             \
+      --localstatedir=/var          \
+      --buildtype=release           \
+      -Dblkid=true                  \
+      -Ddefault-dnssec=no           \
+      -Dfirstboot=false             \
+      -Dinstall-tests=false         \
+      -Dldconfig=false              \
+      -Dsysusers=false              \
+      -Db_lto=false                 \
+      -Drpmmacrosdir=no             \
+      -Dhomed=false                 \
+      -Duserdb=false                \
+      -Dman=false                   \
+      -Dmode=release                \
+      -Ddocdir=/usr/share/doc/systemd-249 \
+      ..
+      
+LANG=en_US.UTF-8 ninja
+LANG=en_US.UTF-8 ninja install
+tar -xf ../../systemd-man-pages-249.tar.xz --strip-components=1 -C /usr/share/man
+rm -rf /usr/lib/pam.d
+systemd-machine-id-setup
+systemctl preset-all
+systemctl disable systemd-time-wait-sync.service
+
+cd ../..
+rm -rf systemd-249
+```
+
+#### 8.70 D-Bus-1.12.20
+
+D-bus是一个消息总线系统，即应用程序之间互相通信的一种简单方式。D-Bus提供一个系统守护进程 (负责 “添加了新硬件” 或 “打印队列发生改变” 等事件)，并对每个用户登录会话提供一个守护进程 (负责一般用户程序的进程间通信)。另外，消息总线被构建在一个通用的一对一消息传递网络上，它可以被任意两个程序用于直接通信 (不需通过消息总线守护进程)。
+
+估计构建时间：0.2 SBU
+
+需要硬盘空间：18 MB
+
+```shell
+cd $LFS/sources
+tar -xvf dbus-1.12.20.tar.gz
+cd dbus-1.12.20
+
+#准备编译
+./configure --prefix=/usr                        \
+            --sysconfdir=/etc                    \
+            --localstatedir=/var                 \
+            --disable-static                     \
+            --disable-doxygen-docs               \
+            --disable-xml-docs                   \
+            --docdir=/usr/share/doc/dbus-1.12.20 \
+            --with-console-auth-dir=/run/console \
+            --with-system-pid-file=/run/dbus/pid \
+            --with-system-socket=/run/dbus/system_bus_socket
+            
+make
+make install
+ln -sfv /etc/machine-id /var/lib/dbus
+
+cd ..
+rm -rf dbus-1.12.20
+```
+
+#### 8.71 Man-DB-2.9.4
+
+Man-DB软件包包含查找和阅读man页面的程序。
+
+估计构建时间：0.4 SBU
+
+需要硬盘空间：38 MB
+
+```shell
+cd $LFS/sources
+tar -xvf man-db-2.9.4.tar.xz
+cd man-db-2.9.4
+
+#准备编译
+./configure --prefix=/usr                        \
+            --docdir=/usr/share/doc/man-db-2.9.4 \
+            --sysconfdir=/etc                    \
+            --disable-setuid                     \
+            --enable-cache-owner=bin             \
+            --with-browser=/usr/bin/lynx         \
+            --with-vgrind=/usr/bin/vgrind        \
+            --with-grap=/usr/bin/grap
+            
+make 
+make check
+make install
+
+cd ..
+rm -rf man-db-2.9.4
+```
+
+#### 8.72 Procps-ng-3.3.17 
+
+Procps-ng 软件包包含监视进程的程序。
+
+估计构建时间：0.5 SBU
+
+需要硬盘空间：19 MB
+
+```shell
+cd $LFS/sources
+tar -xvf procps-ng-3.3.17.tar.xz
+cd procps-ng-3.3.17
+
+#准备编译
+./configure --prefix=/usr                            \
+            --docdir=/usr/share/doc/procps-ng-3.3.17 \
+            --disable-static                         \
+            --disable-kill                           \
+            --with-systemd
+            
+make
+make check
+make install
+
+cd ..
+rm -rf procps-ng-3.3.17
+```
+
+#### 8.73 Util-linux-2.37.2
+
+Util-linux软件包包含若干工具程序。这些程序中有处理文件系统、终端、分区和消息的工具。
+
+估计构建时间：1.1 SBU
+
+需要硬盘空间：261 MB
+
+```shell
+cd $LFS/sources
+tar -xvf util-linux-2.37.2.tar.xz
+cd util-linux-2.37.2
+
+./configure ADJTIME_PATH=/var/lib/hwclock/adjtime   \
+            --libdir=/usr/lib    \
+            --docdir=/usr/share/doc/util-linux-2.37.2 \
+            --disable-chfn-chsh  \
+            --disable-login      \
+            --disable-nologin    \
+            --disable-su         \
+            --disable-setpriv    \
+            --disable-runuser    \
+            --disable-pylibmount \
+            --disable-static     \
+            --without-python     \
+            runstatedir=/run
+            
+make
+chown -Rv tester .
+su tester -c "make -k check"
+make install
+
+cd ..
+rm -rf util-linux-2.37.2
+```
+
+#### 8.74 E2fsprogs-1.46.4
+
+E2fsprogs软件包包含处理*ext2*文件系统的工具。此外它也支持*ext3*和*ext4*日志文件系统。
+
+估计构建时间：机械硬盘4.4SBU，固态硬盘上1.5SBU
+
+需要硬盘空间：93 MB
+
+```shell
+cd $LFS/sources
+tar -xvf e2fsprogs-1.46.4.tar.gz
+cd e2fsprogs-1.46.4
+
+mkdir -v build
+cd build
+
+#准备编译
+../configure --prefix=/usr           \
+             --sysconfdir=/etc       \
+             --enable-elf-shlibs     \
+             --disable-libblkid      \
+             --disable-libuuid       \
+             --disable-uuidd         \
+             --disable-fsck
+             
+make
+make check
+make install
+rm -fv /usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+
+gunzip -v /usr/share/info/libext2fs.info.gz
+install-info --dir-file=/usr/share/info/dir /usr/share/info/libext2fs.info
+
+makeinfo -o      doc/com_err.info ../lib/et/com_err.texinfo
+install -v -m644 doc/com_err.info /usr/share/info
+install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
+
+cd ..
+rm -rf e2fsprogs-1.46.4
+```
+
+#### 8.75 移除调试符号
+
+```shell
+
+```
+
