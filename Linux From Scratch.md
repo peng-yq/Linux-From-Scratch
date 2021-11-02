@@ -4020,3 +4020,253 @@ userdel -r tester
 
 ### 第9章 系统配置
 
+#### 9.1 LFS-Bootscripts-20210608
+
+LFS-bootscripts包包含一组用于在启动/关闭时启动/停止LFS系统的脚本。下面几节描述自定义引导过程所需的配置文件和过程。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：440 KN
+
+```shell
+cd $LFS/sources
+tar -xvf lfs-bootscripts-20210608.tar.xz
+cd lfs-bootscripts-20210608
+make install
+cd ..
+rm -rf lfs-bootscripts-20210608
+```
+
+#### 9.2 创建自定义Udev规则
+
+命名方案可以通过创建自定义udev规则来定制。已经包含了生成初始规则的脚本。通过运行生成这些规则。
+
+```
+bash /lib/udev/init-net-rules.sh
+cat /etc/udev/rules.d/70-persistent-net.rules
+```
+
+#### 9.3 一般网络配置
+
+```shell
+cd /etc/sysconfig/
+cat > ifconfig.enp2s1 << "EOF"
+ONBOOT=yes
+IFACE=enp2s1
+SERVICE=ipv4-static
+IP=192.168.0.10
+GATEWAY=192.168.0.1
+PREFIX=24
+BROADCAST=192.168.0.1
+EOF
+```
+
+**创建*/etc/resolv.conf*文件**
+
+```shell
+cat > /etc/resolv.conf << "EOF"
+# Begin /etc/resolv.conf
+
+domain pyqlfs
+nameserver 192.168.0.1
+
+# End /etc/resolv.conf
+EOF
+```
+
+**配置系统主机名称**
+
+```shell
+echo "pyq-lfs"  > /etc/hostname
+```
+
+**创建*/etc/hosts*文件**
+
+```shell
+cat > /etc/hosts << "EOF"
+# Begin /etc/hosts
+
+127.0.0.1 localhost
+192.168.0.20 pyq-lfs
+
+# End /etc/hosts
+EOF
+```
+
+#### 9.4 系统引导脚本使用和配置
+
+**创建*/etc/inittab*文件**
+
+```shell
+cat > /etc/inittab << "EOF"
+# Begin /etc/inittab
+
+id:3:initdefault:
+
+si::sysinit:/etc/rc.d/init.d/rc S
+
+l0:0:wait:/etc/rc.d/init.d/rc 0
+l1:S1:wait:/etc/rc.d/init.d/rc 1
+l2:2:wait:/etc/rc.d/init.d/rc 2
+l3:3:wait:/etc/rc.d/init.d/rc 3
+l4:4:wait:/etc/rc.d/init.d/rc 4
+l5:5:wait:/etc/rc.d/init.d/rc 5
+l6:6:wait:/etc/rc.d/init.d/rc 6
+
+ca:12345:ctrlaltdel:/sbin/shutdown -t1 -a -r now
+
+su:S016:once:/sbin/sulogin
+
+1:2345:respawn:/sbin/agetty --noclear tty1 9600
+2:2345:respawn:/sbin/agetty tty2 9600
+3:2345:respawn:/sbin/agetty tty3 9600
+4:2345:respawn:/sbin/agetty tty4 9600
+5:2345:respawn:/sbin/agetty tty5 9600
+6:2345:respawn:/sbin/agetty tty6 9600
+
+# End /etc/inittab
+EOF
+```
+
+**创建*/etc/sysconfig/clock*文件**
+
+```she
+cat > /etc/sysconfig/clock << "EOF"
+# Begin /etc/sysconfig/clock
+
+UTC=1
+
+# Set this to any options you might need to give to hwclock,
+# such as machine hardware clock type for Alphas.
+CLOCKPARAMS=
+
+# End /etc/sysconfig/clock
+EOF
+```
+
+**配置控制台语言环境、创建*/etc/profile*文件**
+
+```shell
+cat > /etc/locale.conf << "EOF"
+
+LANG=en_US.UTF-8
+
+EOF
+
+cat > /etc/profile << "EOF"
+# Begin /etc/profile
+
+export LANG=en_US.UTF-8
+
+# End /etc/profile
+EOF
+```
+
+#### 9.5 创建/etc/inputrc文件
+
+inputrc文件是readline 库的配置文件，它在用户从终端输入一行时提供编辑功能。它的工作原理是将键盘输入转换为特定的操作。Readline被bash和大多数其他shell以及许多其他应用程序使用。
+
+```shell
+cat > /etc/inputrc << "EOF"
+# Begin /etc/inputrc
+# Modified by Chris Lynn <roryo@roryo.dynup.net>
+
+# Allow the command prompt to wrap to the next line
+set horizontal-scroll-mode Off
+
+# Enable 8bit input
+set meta-flag On
+set input-meta On
+
+# Turns off 8th bit stripping
+set convert-meta Off
+
+# Keep the 8th bit for display
+set output-meta On
+
+# none, visible or audible
+set bell-style none
+
+# All of the following map the escape sequence of the value
+# contained in the 1st argument to the readline specific functions
+"\eOd": backward-word
+"\eOc": forward-word
+
+# for linux console
+"\e[1~": beginning-of-line
+"\e[4~": end-of-line
+"\e[5~": beginning-of-history
+"\e[6~": end-of-history
+"\e[3~": delete-char
+"\e[2~": quoted-insert
+
+# for xterm
+"\eOH": beginning-of-line
+"\eOF": end-of-line
+
+# for Konsole
+"\e[H": beginning-of-line
+"\e[F": end-of-line
+
+# End /etc/inputrc
+EOF
+```
+
+#### 9.6 创建/etc/shells文件
+
+该shells文件包含系统上的登录shell列表。应用程序使用此文件来确定shell是否有效。对于每个shell，应该有一行，由shell相对于目录结构根目录 (/) 的路径组成。
+
+```shell
+cat > /etc/shells << "EOF"
+# Begin /etc/shells
+
+/bin/sh
+/bin/bash
+
+# End /etc/shells
+EOF
+```
+
+### 第10章 使LFS系统可启动
+
+#### 10.1 创建/etc/fstab文件
+
+/etc/fstab某些程序使用 该文件来确定默认情况下将文件系统安装到何处、以何种顺序以及在安装前必须检查哪些文件系统（完整性错误）。创建一个新的文件系统表，如下所示。
+
+```shell
+cat > /etc/fstab << "EOF"
+# Begin /etc/fstab
+
+# file system  mount-point  type     options             dump  fsck
+#                                                              order
+
+/dev/sda1     /root        ext2    defaults              1     1
+/dev/sda2     /            ext4    defaults              1     1
+/dev/sda3     swap         swap     pri=1                0     0
+proc           /proc        proc     nosuid,noexec,nodev 0     0
+sysfs          /sys         sysfs    nosuid,noexec,nodev 0     0
+devpts         /dev/pts     devpts   gid=5,mode=620      0     0
+tmpfs          /run         tmpfs    defaults            0     0
+devtmpfs       /dev         devtmpfs mode=0755,nosuid    0     0
+
+# End /etc/fstab
+EOF
+```
+
+### 10.2 Linux-5.13.12
+
+Linux软件包包含Linux内核。
+
+估计构建时间：1.5 - 130.0 SBU（通常约为12SBU）
+
+需要硬盘空间：1200 - 8800 MB (通常为1700 MB)
+
+```shell
+cd /sources
+tar xvf linux-5.13.12.tar.xz
+cd linux-5.13.12
+make mrproper
+make defconfig
+make menuconfig
+```
+
