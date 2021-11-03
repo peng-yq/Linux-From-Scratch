@@ -4048,6 +4048,8 @@ cat /etc/udev/rules.d/70-persistent-net.rules
 
 #### 9.3 一般网络配置
 
+请根据宿主机网络配置进行设置。
+
 ```shell
 cd /etc/sysconfig/
 cat > ifconfig.enp2s1 << "EOF"
@@ -4253,7 +4255,7 @@ devtmpfs       /dev         devtmpfs mode=0755,nosuid    0     0
 EOF
 ```
 
-### 10.2 Linux-5.13.12
+#### 10.2 Linux-5.13.12
 
 Linux软件包包含Linux内核。
 
@@ -4268,5 +4270,151 @@ cd linux-5.13.12
 make mrproper
 make defconfig
 make menuconfig
+```
+
+确保以下几项选项：
+
+```shell
+Device Drivers  --->
+  Generic Driver Options  --->
+   [ ] Support for uevent helper [CONFIG_UEVENT_HELPER]
+   [*] Maintain a devtmpfs filesystem to mount at /dev [CONFIG_DEVTMPFS]
+```
+
+```shell
+Processor type and features  --->
+   [*]   EFI stub support  [CONFIG_EFI_STUB]
+```
+
+```shell
+General setup -->
+   [*] Control Group support [CONFIG_CGROUPS]
+```
+
+<img src='Linux From Scratch.assets/image-20211103145725313.png'>
+
+<img src='Linux From Scratch.assets/image-20211103145905517.png'>
+
+<img src='Linux From Scratch.assets/image-20211103150006556.png'>
+
+配置好后，保存退出。
+
+编译内核映像和模块并安装。
+
+```shell
+make
+make modules_install
+```
+
+**移动内核镜像到*/boot*（x86体系结构）**
+
+```shell
+cp -iv arch/x86/boot/bzImage /boot/vmlinuz-5.13.12-lfs-11.0
+```
+
+**内核的符号文件**
+
+```shell
+cp -iv System.map /boot/System.map-5.13.12
+cp -iv .config /boot/config-5.13.12
+```
+
+**安装Linux内核的文档**
+
+```shell
+install -d /usr/share/doc/linux-5.13.12
+cp -r Documentation/* /usr/share/doc/linux-5.13.12
+chown -R 0:0 ../linux-5.13.12
+cd ../linux-5.13.12
+```
+
+**配置 Linux 模块加载顺序**
+
+大多数时候Linux模块是自动加载的，但有时它需要一些特定的方向。加载模块，程序modprobe的或 insmod的，使用*/etc/modprobe.d/usb.conf*用于这一目的。
+
+```shell
+install -v -m755 -d /etc/modprobe.d
+cat > /etc/modprobe.d/usb.conf << "EOF"
+# Begin /etc/modprobe.d/usb.conf
+
+install ohci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i ohci_hcd ; true
+install uhci_hcd /sbin/modprobe ehci_hcd ; /sbin/modprobe -i uhci_hcd ; true
+
+# End /etc/modprobe.d/usb.conf
+EOF
+```
+
+#### 10.3 使用 GRUB 设置引导过程
+
+将GRUB文件安装到*/boot/gru*b并设置启动扇区。
+
+```shell
+grub-install /dev/sda
+```
+
+创建 /boot/grub/grub.cfg 文件。
+
+```shell
+cat > /boot/grub/grub.cfg << "EOF"
+# Begin /boot/grub/grub.cfg
+set default=0
+set timeout=5
+
+insmod ext2
+set root=(hd0,2)
+
+menuentry "GNU/Linux, Linux 5.13.12-lfs-11.0" {
+        linux   /boot/vmlinuz-5.13.12-lfs-11.0 root=/dev/sda2 ro
+}
+EOF
+```
+
+### 第11章 终章
+
+创建*/etc/lfs-release*文件。有了这个文件，您（如果您在某些时候需要寻求帮助，我们也很容易）找出系统上安装了哪个LFS版本。
+
+```shell
+echo 11.0 > /etc/lfs-release
+```
+
+创建*/etc/lfs-release*文件。
+
+```shell
+cat > /etc/lsb-release << "EOF"
+DISTRIB_ID="Linux From Scratch"
+DISTRIB_RELEASE="11.0"
+DISTRIB_CODENAME="<your name here>"
+DISTRIB_DESCRIPTION="Linux From Scratch"
+EOF
+```
+
+创建*/etc/os-release*文件。
+
+```shell
+cat > /etc/os-release << "EOF"
+NAME="Linux From Scratch"
+VERSION="10.0"
+ID=lfs
+PRETTY_NAME="Linux From Scratch 10.0"
+VERSION_CODENAME="<your name here>"
+EOF
+```
+
+退出chroot环境。
+
+```shell
+logout
+```
+
+卸载LFS文件系统层次结构。
+
+```shell
+umount -Rv $LFS
+```
+
+重新启动系统。
+
+```shell
+shutdown -r now
 ```
 
