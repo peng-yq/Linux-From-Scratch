@@ -36,7 +36,7 @@ Password：LFSL
 
 [Video Tutorials](https://www.youtube.com/watch?v=9TYr1mCzMcg&list=PLyc5xVO2uDsAlIkKBIGauDQ6LejoQovyL)
 
-[Video Tutorials (Ubuntu-as-Host-Machine)](https://www.youtube.com/watch?v=5tRJgDJC7kY)
+
 
 
 

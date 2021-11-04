@@ -35,7 +35,103 @@ Some Linux distributions: Unbuntu, Cent OS, Debian, Kali......
 17. vim   *file_name*             编辑文件，适用于Terminal，相较于vi，vim拥有更多的优势，[vim编辑命令](https://www.runoob.com/linux/linux-vim.html)
 18. [Linux压缩命令](https://blog.csdn.net/weixin_44901564/article/details/99682926?ops_request_misc=&request_id=&biz_id=102&utm_term=Linux%E6%89%93%E5%8C%85&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-1-99682926.pc_search_result_hbase_insert&spm=1018.2226.3001.4187)
 
-#### 1.3 学习LFS的意义
+#### 1.3 Linux的一般组成
+
+**1. Linux内核**
+
+Linux内核通常包含了内核以及内核模块的含义。Linux内核是一个宏内核，设备驱动程序可以完全访问硬件。Linux设备驱动程序可以方便地设置为模块化形式（内核模块），并可以在系统运行期间之间装载或卸载。内核可以在编译前进行配置，以确定内核包含什么样的功能，这样可以使内核最大程度地适应各种不同的计算机，而内核的模块化机制可以令内核的使用更加灵活，在需要某项功能的时候通过装载相应的模块来增加该功能，不需要的时候卸载掉就可以了。
+
+**2. C库及各类功能库**
+
+在常规的Linux系统中，一般提供一个C函数库的实现，所谓C函数库就是将标准C语言中的各种函数功能（如标准的输入和输出）进行实现的库程序文件，在Linux系统中很多程序都是用C语言进行编写的，所以C函数库是作为一个比较重要的函数库存在于系统中。
+
+除了标准C库实现外，还需要一些通用或者特定的功能，这些功能也被组织为函数库的形式运行于系统中。
+
+在常规的Linux系统中，C库一般采用Glibc，各类功能的函数库则比较丰富，如Zlib、Ncurses等。
+
+**3. 交互环境**
+
+交互环境主要分为两种：命令行的交互环境（CLI）和图形化的交互环境（GUI）。交互环境一般是由一个或多个程序来实现的，这些交互程序以用户或计算机进行方便的交互为目标，其本身实现的具体应用功能并不多，具体应用功能实现应该由各种应用程序来完成。
+
+LFS的构建是制作出让系统更加简化，将采用命令行的交互环境，命令行的交互环境具有代表性和广泛使用的就是Bash。
+
+**4. 常用命令**
+
+为了让系统更加易于使用，我们需要一些命令来和系统进行交互，包括复制、显示文件列表等，比如[1.2 基础命令](1.2 基础命令)。
+
+**5. 应用程序**
+
+这类程序是Linux系统的主体，任何一个系统的存在都是为了满足应用的需求。
+
+**6. 启动和登录控制程序**
+
+启动和登录控制程序属于比较特殊的一类程序，一个常规的系统如果想比较好地运行起来就必须要借助这类程序。
+
+在计算机启动过程中需要对计算机系统的环境进行处理、准备好各种硬件和软件的使用环境，装载运行过程中需要使用到的各种软件程序等。这些处理过程都是由启动控制程序来进行，代表命令就是init命令。
+
+为了保证计算机被合法地使用，Linux系统通常都提供了登录控制程序，通过用户名和口令来判断用户是否合法，在一定程度上保证计算机系统的安全，代表命令为login命令。
+
+**7. 目录和配置文件**
+
+目录用于存放各种文件，在Linux系统中为了方便文件的存取，使各种发行版之间具有良好的兼容性，国际相关组织对Linux系统中重要目录的命令、存放位置和用途都做了规定吗，这份规则称为FHS。
+
+FHS包含在LSB（Linux Standards Base）规则中，为了能保证不同Linux发行版提供的应用程序能相互兼容，LSB规则中包含了目录、文件和函数库等的命名、存放及一系列要求。
+
+以下是Linux系统的基本目录组成及主要作用。
+
+- /boot：用于存放启动内核及启动内核相关的文件。
+
+- /bin：常用的基本命令存放目录。
+
+- /sbin：管理系统相关的基本命令存放目录。
+
+- /dev：设备文件存放目录。
+
+- /home：用户目录，除root用户外其他登录用户的主目录均建议存放在该目录中。
+
+- /etc：各类配置文件存放目录。
+
+- /lib： 常用的基本函数库存放目录，内核模块也存放在该目录中。
+
+- /libexec：存放一些非用户直接使用的脚本或命令，这些脚本和命令一般由命令调用或者在函数库中进行调用。
+
+- /media：一般用于设备的挂载，比如U盘、CD/DVD等。
+
+- /mnt：一个比较古老的用于挂载设备的目录，但一些程序会依赖该目录，因此目前还是标准目录之一。
+
+-  opt：用于存放一些比较大型也比较独立的软件。
+
+- /proc：用于存放Linux内核的SYS文件系统，这个目录名是固定的，需要程序会使用该目录中的文件来查询内核的一些状态。
+
+- /root：root用户的主目录。
+
+- /sys：用于存放Linux内核的SYS文件系统，这个目录名是固定的，许多程序会使用该目录中的文件来查询内核的一些状态。
+
+- tmp：用于存放临时文件，该目录可以被任何用户使用。
+
+- /var：一般用于存放一些日志及程序启动的PID文件等。
+
+- /usr：该目录作为基本目录的扩展，其中许多目录都与根目录中的目录相同。
+
+  /usr/include：编译软件包时默认的头文件存放目录，要编译程序，这个目录的内容不可缺少。
+
+  /usr/bin：与/bin用户相似，用于存放常用的命令。
+
+  /usr/sbin：与/sbin用户相似，用于存放管理员常用的命令。
+
+  /usr/lib：与/lib用处相似，用于存放常用的函数库。
+
+  /usr/share：用于存放各种软件包共享的辅助文件，如图标、文档、运行描述文件等。
+
+  /usr/doc和/usr/share/doc：用于存放软件的说明文档。
+
+  /usr/mann和/usr/share/man：用于存放各种命令、文件、函数等使用手册。
+
+**8. 软化的管理方式**
+
+任何一个Linux系统都或明显或隐性地存在软件的管理方式，目前大多成熟的Linux发行版都会有一个专门用于管理安装软件的软件，称为“包管理器”，比如Debian（及其衍生版Ubuntu）使用的apt、RedHat系统中的rpm，以及Gentoo中使用的portage。
+
+#### 1.4 学习LFS的意义
 
 相较于安装传统的Linux发行版，学习以及构建属于自己的Linux，拥有以下优势：
 
@@ -50,7 +146,15 @@ Some Linux distributions: Unbuntu, Cent OS, Debian, Kali......
 
 #### 2.1 宿主系统需求
 
-以下搭建均在虚拟机中进行，发行版Linux为Ubuntu 20.04.2.0 LTS。
+以下搭建均在虚拟机中进行，发行版Linux为Ubuntu 20.04.2.0 LTS。具体配置如下。
+
+系统安装完成后，点击VMware的编辑按钮，选择虚拟机网络编辑器，修改VMnet8（NAT模式）网卡，将VMnet8的子网IP设置为172.16.0.0 ，子网掩码为 255.255.0.0。
+
+<img src='Linux From Scratch.assets/image-20211104113228223.png'>
+
+<img src='Linux From Scratch.assets/image-20211104113013165.png'>
+
+更换国内源请参考[链接](https://blog.csdn.net/daerzei/article/details/84873964/?ops_request_misc=&request_id=&biz_id=102&utm_term=ubuntu%E6%9B%B4%E6%8D%A2%E5%9B%BD%E5%86%85%E6%BA%90&utm_medium=distribute.pc_search_result.none-task-blog-2~all~sobaiduweb~default-1-84873964.pc_search_result_hbase_insert&spm=1018.2226.3001.4187)。
 
 在搭建前需检查宿主机是否拥有必须的软件，并且版本达到最低要求（[软件及版本查看](https://bf.mengyan1223.wang/lfs/zh_CN/11.0-systemd/LFS-SYSD-BOOK.html#ch-partitioning-hostreqs)），切换至root用户并运行如下脚本。
 
@@ -114,9 +218,9 @@ rm -f dummy.c dummy
 EOF
 ```
 
-并输入`bash version-check.sh`运行脚本进行检查，本文使用的Ubuntu还有较多软件未下载，通过`sudo apt-get install package_name`下载即可。
+并输入`bash version-check.sh`运行脚本进行检查，本文使用的Ubuntu还有较多软件未下载，通过`sudo apt install package_name`下载即可。
 
-<img src="Linux From Scratch.assets/image-20211010201124791.png"/>
+<img src='Linux From Scratch.assets/image-20211104112808599.png'>
 
 本宿主机检查软件版本所发现的问题如下：
 
@@ -133,11 +237,11 @@ EOF
 
 #### 2.2 创建新的分区
 
-Ubuntu在默认配置下只拥有一个硬盘，此处我们添加一个新的硬盘来构建LFS系统，配置为20GB，SCSI，磁盘内容存储在单个文件中。
+Ubuntu在默认配置下只拥有一个硬盘，此处我们添加一个新的硬盘来构建LFS系统，配置为15GB，SCSI，磁盘内容存储在单个文件中。
 
 可通过Ubuntu自带的磁盘管理工具或通过命令`lsblk`查看本宿主机磁盘情况。
 
-<img src="Linux From Scratch.assets/image-20211011200902437.png">
+<img src='Linux From Scratch.assets/image-20211104112637449.png'>
 
 我们可以看到两块硬盘中sda被分成了3个分区，而sdb未被分区，因此我们选择sdb通过`sudo cfdisk /dev/sdb`命令进行操作，并选择GPT(GUID)分区表。
 
@@ -149,20 +253,19 @@ GUID分区表的优势：
 - 分区表自带备份。
 - 每个分区可以有一个名称（不同于卷标）。
 
-本文划分了3个分区，分别作为根分区（Root Partition），主分区（Main Partition），交换分区(Swap Partition)，具体容量分配如下。
+本文划分了2个分区，sdb1作为交换分区(Swap Partition)，sdb2作为主分区（Main Partition），具体容量分配如下。
 
-<img src="Linux From Scratch.assets/image-20211011201016033.png">
+![image-20211104122703270](Linux From Scratch.assets/image-20211104122703270.png)
 
 #### 2.3 在分区上建立文件系统
 
 现在我们建立好了空白分区，可以在分区上建立文件系统。LFS 可以使用 Linux 内核能够识别的任何文件系统，最常见的是 ext3 和 ext4。文件系统的选型是一个复杂的问题，要综合考虑分区的大小，以及其中所存储文件的特征。
 
-本文中，根分区（sdb1）使用ext2；主分区（sdb2）采用ext4；此外由于新建了一个新的交换分区，我们需要初始化它。具体命令如下。
+本文中，主分区（sdb2）采用ext4；此外由于新建了一个新的交换分区，我们需要初始化它。具体命令如下。
 
 ```shell
-sudo mkfs -v -t ext2 /dev/sdb1
 sudo mkfs -v -t ext4 /dev/sdb2
-sudo mkswap /dev/sdb3
+sudo mkswap /dev/sdb1
 ```
 
 #### 2.4 设置$LFS环境变量
