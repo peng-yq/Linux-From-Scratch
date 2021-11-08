@@ -273,7 +273,6 @@ sudo mkswap /dev/sdb1
 后续搭建中将经常使用环境变量LFS，因此我们需要将该变量定义且设置在所构建LFS使用的目录中。
 
 ```shell
-sudo mkdir /mnt/lfs
 export LFS=/mnt/lfs
 echo $LFS
 ```
@@ -291,10 +290,9 @@ echo $LFS
 我们大多数人用惯了Windows系统，对linux系统中磁盘的管理就先入为主，不太好理解挂载这一动作。在linux系统中添加一块新磁盘后，要进行分区、格式化（分配文件系统）、挂载。当执行`ll /dev/sd*`时，可以看到相关的磁盘信息。大多数人会觉得硬盘添加，且分区、格式化了，可以用了。其实不然，还没有挂载好的硬盘就像新修的房子没有门一样，挂载就是将磁盘和某个文件夹捆绑在一起，做成一道磁盘的大门。
 
 ```shell
+sudo mkdir -pv $LFS
 sudo mount -v -t ext4 /dev/sdb2 $LFS
-sudo mkdir $LFS/boot
-sudo mount -v -t ext2 /dev/sdb1 $LFS/boot
-sudo /sbin/swapon -v /dev/sdb3
+sudo /sbin/swapon -v /dev/sdb1
 ```
 
 此时我们通过`cd $LFS`进入搭建文件夹，可以看到已完成分区已挂载完成。
@@ -333,14 +331,6 @@ sudo wget --input-file=wget-list
 pushd $LFS/sources
   md5sum -c md5sums
 popd
-```
-
-在第6章中，会使用交叉编译器编译程序。为了将这个交叉编译器和其他程序分离，它会被安装在一个专门的目录。
-
-```shell
-sudo mkdir -pv $LFS/tools
-cd $LFS
-sudo ln -sv $LFS/tools /
 ```
 
 ### 第4章 最后准备工作
@@ -404,7 +394,7 @@ esac
 
   要创建的用户的名称。
 
-在后续搭建中，我们通过`su - lfs`切换至用户lfs，-使得su启动一个登录shell，而不是非登录shell。
+**在后续搭建中，我们通过`su - lfs`切换至用户lfs，-使得su启动一个登录shell，而不是非登录shell。**
 
 #### 4.2 配置环境
 
@@ -474,15 +464,14 @@ source ~/.bash_profile
 
 ### 第5章 编译交叉工具链
 
-本章中编译的程序会被安装在$LFS/tools目录中，以将它们和后续章节中安装的文件分开。但是，本章中编译的库会被安装到它们的最终位置，因为这些库在我们最终要构建的系统中也存在。
+本章中编译的程序会被安装在*$LFS/tools*目录中，以将它们和后续章节中安装的文件分开。但是，本章中编译的库会被安装到它们的最终位置，因为这些库在我们最终要构建的系统中也存在。
 
 > 若重新回到工作环境，请输入如下命令进行操作。
 
 ```shell
 export LFS=/mnt/lfs
 sudo mount -v -t ext4 /dev/sdb2 $LFS
-sudo mount -v -t ext2 /dev/sdb1 $LFS/boot
-sudo /sbin/swapon -v /dev/sdb3
+sudo /sbin/swapon -v /dev/sdb1
 su - lfs
 ```
 
@@ -496,7 +485,7 @@ Binutils包含汇编器、链接器以及其他用于处理目标文件的工具
 
 ```shell
 cd $LFS/sources
-tar -xf binutils-2.37.tar.xz
+tar -xvf binutils-2.37.tar.xz
 cd binutils-2.37
 
 #建立专用目录用于构建Binutils
@@ -515,6 +504,8 @@ make
 
 #安装该软件包
 make install -j1
+cd ../..
+rm -rf binutils-2.37
 ```
 
 经过测试，本宿主机构建Binutils时间约为3min。
@@ -522,8 +513,6 @@ make install -j1
 编译完成后将在*$LFS/tools*文件夹下生成*x86_64-lfs-linux-gnu*文件夹。
 
 <img src="Linux From Scratch.assets/image-20211014113707822.png">
-
-同时为了节约存储空间，我们可以通过`sudo rm -rf binutils-2.37 `删除解压的Binutils文件夹。
 
 #### 5.2 GCC-11.2.0 - 第一遍
 
@@ -587,6 +576,9 @@ make install
 cd ..
 cat gcc/limitx.h gcc/glimits.h gcc/limity.h > \
   `dirname $($LFS_TGT-gcc -print-libgcc-file-name)`/install-tools/include/limits.h
+  
+cd ..
+rm -rf gcc-11.2.0
 ```
 
 经过测试本宿主机编译完成GCC花费72min，orz。
@@ -612,6 +604,7 @@ find usr/include -name '.*' -delete
 rm usr/include/Makefile
 cp -rv usr/include $LFS/usr
 
+cd ..
 rm -rf linux-5.13.12
 ```
 
@@ -740,14 +733,8 @@ cd m4-1.4.19
  make DESTDIR=$LFS install
  
  cd ..
- rm -rf m4-1.4.19
+ rm -rf m4-1.4.19 
 ```
-
-编译过程中出现如下错误。
-
-<img src="Linux From Scratch.assets/image-20211017171122392.png">
-
-检查发现缺少第5章Glibc编译完成后对limits.h头文件的安装（命令已补充在[5.4 Glibc-2.34](####5.4 Glibc-2.34)）。
 
 #### 6.2 Ncurses-6.2
 
@@ -932,6 +919,7 @@ cd findutils-4.8.0
             
 make
 make DESTDIR=$LFS install
+
 cd ..
 rm -rf findutils-4.8.0
 ```
@@ -1020,7 +1008,7 @@ Make软件包包含一个程序，用于控制从软件包源代码生成可执�
 
 ```shell
 cd $LFS/sources
-tar -xvf make-4.3.tar.xz
+tar -xvf make-4.3.tar.gz
 cd make-4.3
 
 #准备编译make
@@ -1250,10 +1238,17 @@ esac
 
 #### 7.1 准备虚拟内核文件系统
 
-内核对外提供了一些文件系统，以便自己和用户进行通信，它们是虚拟文件系统，并不占用磁盘空间，其内容保留在内存中。通过如下命令创建这些文件系统的挂载点。
+内核对外提供了一些文件系统，以便自己和用户进行通信，它们是虚拟文件系统，并不占用磁盘空间，其内容保留在内存中。通过如下命令创建将挂载文件系统的目录。
 
 ```shell
 mkdir -pv $LFS/{dev,proc,sys,run}
+```
+
+**创建初始设备节点**
+
+```shell
+mknod -m 600 $LFS/dev/console c 5 1
+mknod -m 666 $LFS/dev/null c 1 3
 ```
 
 **挂载和填充/dev**
@@ -1269,7 +1264,11 @@ mount -v --bind /dev/pts $LFS/dev/pts
 mount -vt proc proc $LFS/proc
 mount -vt sysfs sysfs $LFS/sys
 mount -vt tmpfs tmpfs $LFS/run
+```
 
+**/run下的tmpfs文件系统已经在之前挂载了，只需要创建一个目录即可**
+
+```shell
 if [ -h $LFS/dev/shm ]; then
   mkdir -pv $LFS/$(readlink $LFS/dev/shm)
 fi
@@ -1287,6 +1286,8 @@ chroot "$LFS" /usr/bin/env -i   \
     PATH=/usr/bin:/usr/sbin \
     /bin/bash --login +h
 ```
+
+<img src='Linux From Scratch.assets/image-20211105173724496.png'>
 
 > bash提示符包含 I have no name!。这是正常的，因为现在还没有创建/etc/passwd文件。
 >
@@ -1393,6 +1394,14 @@ wheel:x:97:
 nogroup:x:99:
 users:x:999:
 EOF
+```
+
+为了满足某些软件的测试需要，创建一个普通用户。
+
+```shell
+echo "tester:x:101:101::/home/tester:/bin/bash" >> /etc/passwd
+echo "tester:x:101:" >> /etc/group
+install -o tester -d /home/tester
 ```
 
 为了移除 “I have no name!” 提示符，需要打开一个新shell。由于已经创建了文件/etc/passwd和/etc/group，用户名和组名现在就可以正常解析了。
@@ -1504,8 +1513,8 @@ Perl软件包包含实用报表提取语言
 
 ```shell
 cd $LFS/sources
-tar -xvf perl-5.34.tar.xz
-cd perl-5.34
+tar -xvf perl-5.34.0.tar.xz
+cd perl-5.34.0
 
 #准备编译
 sh Configure -des                                        \
@@ -1522,7 +1531,7 @@ make
 make install
 
 cd ..
-rm -rf perl-5.34
+rm -rf perl-5.34.
 ```
 
 #### 7.9 Python-3.9.6
@@ -1583,7 +1592,7 @@ Util-linux软件包包含一些工具程序。
 
 ```shell
 cd $LFS/sources
-tar -xvf util-linux-2.37.2
+tar -xvf util-linux-2.37.2.xz
 cd util-linux-2.37.2
 
 mkdir -pv /var/lib/hwclock
@@ -1731,6 +1740,8 @@ echo "rootsbindir=/usr/sbin" > configparms
              libc_cv_slibdir=/usr/lib
              
 make
+
+#y
 make check
 
 #防止警告
