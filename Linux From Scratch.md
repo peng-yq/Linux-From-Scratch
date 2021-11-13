@@ -1,4 +1,4 @@
-# Linux From Scratch 11.0-systemed
+Linux From Scratch 11.0-systemed
 
 LFS──Linux from Scratch，就是一种从网上直接下载源码，从头编译Linux的安装方式。它不是发行版，只是一个菜谱，告诉你到哪里去买菜（下载源码），怎么把这些生东西( raw code) 作成符合自己口味的菜肴──个性化的Linux，不单单是个性的桌面。
 
@@ -2044,7 +2044,7 @@ rm -rf readline-8.1
 
 #### 8.10 M4-1.4.19
 
-M4软件包包含一个宏处理器。
+M4软件包包含一个宏处理器，该命令用于处理m4格式的文件，m4格式的文件是一种用特殊表达式（宏）来表示如何处理文本的文件。很多源代码中都用到了m4格式的文件，必须安装该软件包才能正确处理这类文件。
 
 估计构建时间：0.7 SBU
 
@@ -2116,6 +2116,10 @@ rm -rf flex-2.6.4
 #### 8.13 Tcl-8.6.11
 
 Tcl软件包包含工具命令语言，它是一个可靠的通用脚本语言。Except软件包是用Tcl语言编写的。
+
+估计构建时间：3.7 SBU
+
+需要硬盘空间：80 MB
 
 ```shell
 cd $LFS/sources
@@ -2286,6 +2290,8 @@ make
 make html
 
 make check 2>&1 | tee gmp-check-log
+
+#确保测试套件中的所有197个测试都通过。通过发出以下命令检查结果
 awk '/# PASS:/{total+=$3} ; END{print total}' gmp-check-log
 
 make install
@@ -2444,6 +2450,11 @@ find man -name Makefile.in -exec sed -i 's/groups\.1 / /'   {} \;
 find man -name Makefile.in -exec sed -i 's/getspnam\.3 / /' {} \;
 find man -name Makefile.in -exec sed -i 's/passwd\.5 / /'   {} \;
 
+sed -e 's:#ENCRYPT_METHOD DES:ENCRYPT_METHOD SHA512:' \
+    -e 's:/var/spool/mail:/var/mail:'                 \
+    -e '/PATH=/{s@/sbin:@@;s@/bin:@@}'                \
+    -i etc/login.defs
+    
 #修复错误
 sed -e "224s/rounds/min_rounds/" -i libmisc/salt.c
 
@@ -2537,9 +2548,15 @@ ln -sfv ../../libexec/gcc/$(gcc -dumpmachine)/11.2.0/liblto_plugin.so \
 echo 'int main(){}' > dummy.c
 cc dummy.c -v -Wl,--verbose &> dummy.log
 readelf -l a.out | grep ': /lib'
+#如果没有错误，应输出[Requesting program interpreter: /lib64/ld-linux-x86-64.so.2]
 
 grep -o '/usr/lib.*/crt[1in].*succeeded' dummy.log
+#如果没有错误，输出应如下所示
+#/usr/lib/gcc/x86_64-pc-linux-gnu/11.2.0/../../../../lib/crt1.o succeeded
+#/usr/lib/gcc/x86_64-pc-linux-gnu/11.2.0/../../../../lib/crti.o succeeded
+#/usr/lib/gcc/x86_64-pc-linux-gnu/11.2.0/../../../../lib/crtn.o succeeded
 
+#剩余测试输出内容请参考w
 grep -B4 '^ /usr/include' dummy.log
 
 grep 'SEARCH.*/usr/lib' dummy.log |sed 's|; |\n|g'
@@ -2558,6 +2575,30 @@ mv -v /usr/lib/*gdb.py /usr/share/gdb/auto-load/usr/lib
 cd ../..
 rm -rf gcc-11.2.0
 ```
+
+有关测试：
+
+- 测试时间很长，甚至数小时
+
+- 已知8项与analyzer有关的测试失败
+
+<img src='Linux From Scratch.assets/image-20211111195750110.png'>
+
+- 已知一项名为asan_test.C的测试项失败
+
+<img src="Linux From Scratch.assets/image-20211112075127191.png">
+
+- 已知一项名为49745.cc的测试项失败
+
+<img src="Linux From Scratch.assets/image-20211112075644958.png">
+
+- 已知两项numpunct测试和六项与get_time相关的测试失败
+
+<img src="Linux From Scratch.assets/image-20211112081610574.png">
+
+- 其他的一些错误
+
+<img src="Linux From Scratch.assets/image-20211112081537975.png">
 
 #### 8.25 Pkg-config-0.29.2
 
@@ -2718,6 +2759,8 @@ rm -rf gettext-0.21
 
 #### 8.30 Bison-3.7.6
 
+Bison软件包中包含了一个语法分析程序的生成器——bison，bison命令可以自动生成一些程序文件，也可常用来在编译过程中使用。
+
 估计构建时间：6.3 SBU
 
 需要硬盘空间：53 MB
@@ -2794,6 +2837,8 @@ exit $value
 EOF
 
 make install
+
+#运行新编译的bash程序（替换当前正在执行的程序）
 exec /bin/bash --login +h
 
 cd ..
@@ -2824,6 +2869,12 @@ rm -fv /usr/lib/libltdl.a
 cd ..
 rm -rf libtool-2.4.6
 ```
+
+已知有五个测试在LFS构建环境中失败，但如果在安装automake后重新检查，所有测试都会通过。
+
+<img src="Linux From Scratch.assets/image-20211113162311619.png">
+
+<img src="Linux From Scratch.assets/image-20211113162405757.png">
 
 #### 8.34 GDBM-1.20
 
@@ -2905,7 +2956,7 @@ rm -rf expat-2.4.1
 
 #### 8.37 Inetutils-2.1
 
-Inetutils软件包包含基本网络程序。
+Inetutils软件包包含基本网络程序，比如ping、arp等。
 
 估计构建时间：0.3 SBU
 
@@ -2939,7 +2990,7 @@ rm -rf inetutils-2.1
 
 #### 8.38 Less-590
 
-Less软件包包含一个文本文件查看器。
+Less软件包包含一个文本分页显示的查看器，通常用于在终端下显示较长的文本，less命令将超过一屏的文本分为多页进行显示，同时具有查询文本等功能。
 
 估计构建时间：< 0.1 SBU
 
@@ -2962,7 +3013,7 @@ rm -rf less-590
 
 #### 8.39 Perl-5.34.0
 
-Perl软件包包含实用报表提取语言。
+Perl软件包提供了综合C语言、sed、awk和bash特性和能力于一体的强大地脚本编程语言perl。
 
 估计构建时间：10 SBU
 
@@ -3397,7 +3448,7 @@ rm -rf check-0.15.2
 
 #### 8.53 Diffutils-3.8
 
-Diffutils软件包包含显示文件或目录之间差异的程序。
+Diffutils软件包包含显示文件或目录之间差异的程序——diff，diff命令常用来制作补丁文件，patch命令可以使用由diff命令产生的补丁文件。
 
 估计构建时间：0.7 SBU
 
@@ -3421,7 +3472,7 @@ rm -rf diffutils-3.8
 
 #### 8.54 Gawk-5.1.0
 
-Gawk软件包包含操作文本文件的程序。
+Gawk软件包包含操作文本文件的程序awk，该命令是脚本程序最常用的命令之一。
 
 估计构建时间：0.4 SBU
 
