@@ -1,4 +1,4 @@
-Linux From Scratch 11.0-systemed
+# Linux From Scratch 11.0-systemed
 
 LFS──Linux from Scratch，就是一种从网上直接下载源码，从头编译Linux的安装方式。它不是发行版，只是一个菜谱，告诉你到哪里去买菜（下载源码），怎么把这些生东西( raw code) 作成符合自己口味的菜肴──个性化的Linux，不单单是个性的桌面。
 
@@ -3718,7 +3718,7 @@ Patch软件包包含通过应用 “补丁” 文件，修改或创建文件的�
 
 ```shell
 cd $LFS/sources
-tar -xvf patch-2.7.6.xz
+tar -xvf patch-2.7.6.tar.xz
 cd path-2.7.6
 
 #准备编译
@@ -3784,6 +3784,13 @@ make check
 make install
 make TEXMF=/usr/share/texmf install-tex
 
+pushd /usr/share/info
+  rm -v dir
+  for f in *
+    do install-info $f dir 2>/dev/null
+  done
+popd
+
 cd ..
 rm -rf texinfo-6.8
 ```
@@ -3824,139 +3831,68 @@ done
 #创建符号链接
 ln -sv ../vim/vim82/doc /usr/share/doc/vim-8.2.3337
 
+#配置VIM
+cat > /etc/vimrc << "EOF"
+" Begin /etc/vimrc
+
+" Ensure defaults are set before customizing settings, not after
+source $VIMRUNTIME/defaults.vim
+let skip_defaults_vim=1 
+
+set nocompatible
+set backspace=2
+set mouse=
+syntax on
+if (&term == "xterm") || (&term == "putty")
+  set background=dark
+endif
+
+" End /etc/vimrc
+EOF
+
 cd ..
 rm -rf vim-8.2.3337
 ```
 
-#### 8.67 MarkupSafe-2.0.1
+#### 8.67 Eudev-3.2.10
 
-MarkupSafe是一个为XML/HTML/XHTML标记语言实现字符串安全处理的Python模块。
-
-估计构建时间：< 0.1 SBU
-
-需要硬盘空间：516 KB 
-
-```shell
-cd $LFS/sources
-tar -xvf MarkupSafe-2.0.1.tar.gz 
-cd MarkupSafe-2.0.1
-
-python3 setup.py build
-python3 setup.py install --optimize=1
-
-cd ..
-rm -rf MarkupSafe-2.0.1
-```
-
-#### 8.68 Jinja2-3.0.1
-
-Jinja2是一个实现了简单的，Python风格的模板语言的Python模块。
-
-估计构建时间：< 0.1 SBU
-
-需要硬盘空间：3.7 MB
-
-```shell
-cd $LFS/sources
-tar -xvf tar -xvf Jinja2-3.0.1.tar.gz
-cd Jinja2-3.0.1
-
-python3 setup.py install --optimize=1
-
-cd ..
-rm -rf Jinja2-3.0.1
-```
-
-#### 8.69 Systemd-249
-
-Systemd软件包包含控制系统引导、运行和关闭的程序。
-
-估计构建时间：2.7 SBU
-
-需要硬盘空间：277 MB
-
-```shell
-cd $LFS/sources
-tar -xvf systemd-249.tar.gz
-cd systemd-249
-
-#应用补丁修复
-patch -Np1 -i ../systemd-249-upstream_fixes-1.patch
-
-sed -i -e 's/GROUP="render"/GROUP="video"/' \
-        -e 's/GROUP="sgx", //' rules.d/50-udev-default.rules.in
-        
-mkdir -p build
-cd build
-
-LANG=en_US.UTF-8                    \
-meson --prefix=/usr                 \
-      --sysconfdir=/etc             \
-      --localstatedir=/var          \
-      --buildtype=release           \
-      -Dblkid=true                  \
-      -Ddefault-dnssec=no           \
-      -Dfirstboot=false             \
-      -Dinstall-tests=false         \
-      -Dldconfig=false              \
-      -Dsysusers=false              \
-      -Db_lto=false                 \
-      -Drpmmacrosdir=no             \
-      -Dhomed=false                 \
-      -Duserdb=false                \
-      -Dman=false                   \
-      -Dmode=release                \
-      -Ddocdir=/usr/share/doc/systemd-249 \
-      ..
-      
-LANG=en_US.UTF-8 ninja
-LANG=en_US.UTF-8 ninja install
-tar -xf ../../systemd-man-pages-249.tar.xz --strip-components=1 -C /usr/share/man
-rm -rf /usr/lib/pam.d
-systemd-machine-id-setup
-systemctl preset-all
-systemctl disable systemd-time-wait-sync.service
-
-cd ../..
-rm -rf systemd-249
-```
-
-#### 8.70 D-Bus-1.12.20
-
-D-bus是一个消息总线系统，即应用程序之间互相通信的一种简单方式。D-Bus提供一个系统守护进程 (负责 “添加了新硬件” 或 “打印队列发生改变” 等事件)，并对每个用户登录会话提供一个守护进程 (负责一般用户程序的进程间通信)。另外，消息总线被构建在一个通用的一对一消息传递网络上，它可以被任意两个程序用于直接通信 (不需通过消息总线守护进程)。
+Eudev包包含用于动态创建设备节点的程序。
 
 估计构建时间：0.2 SBU
 
-需要硬盘空间：18 MB
+需要硬盘空间：80 MB
 
 ```shell
 cd $LFS/sources
-tar -xvf dbus-1.12.20.tar.gz
-cd dbus-1.12.20
+tar -xvf eudev-3.2.10.tar.gz
+cd eudev-3.2.10
 
-#准备编译
-./configure --prefix=/usr                        \
-            --sysconfdir=/etc                    \
-            --localstatedir=/var                 \
-            --disable-static                     \
-            --disable-doxygen-docs               \
-            --disable-xml-docs                   \
-            --docdir=/usr/share/doc/dbus-1.12.20 \
-            --with-console-auth-dir=/run/console \
-            --with-system-pid-file=/run/dbus/pid \
-            --with-system-socket=/run/dbus/system_bus_socket
+./configure --prefix=/usr           \
+            --bindir=/usr/sbin      \
+            --sysconfdir=/etc       \
+            --enable-manpages       \
+            --disable-static
             
 make
+mkdir -pv /usr/lib/udev/rules.d
+mkdir -pv /etc/udev/rules.d
+make check
 make install
-ln -sfv /etc/machine-id /var/lib/dbus
+
+#安装一些在 LFS 环境中有用的自定义规则和支持文件
+tar -xvf ../udev-lfs-20171102.tar.xz
+make -f udev-lfs-20171102/Makefile.lfs install
+
+#进行配置
+udevadm hwdb --update
 
 cd ..
-rm -rf dbus-1.12.20
+rm -rf eudev-3.2.10
 ```
 
-#### 8.71 Man-DB-2.9.4
+#### 8.68 Man-DB-2.9.4
 
-Man-DB软件包包含查找和阅读man页面的程序。
+Man-DB包包含用于查找和查看手册页的程序。
 
 估计构建时间：0.4 SBU
 
@@ -3967,7 +3903,6 @@ cd $LFS/sources
 tar -xvf man-db-2.9.4.tar.xz
 cd man-db-2.9.4
 
-#准备编译
 ./configure --prefix=/usr                        \
             --docdir=/usr/share/doc/man-db-2.9.4 \
             --sysconfdir=/etc                    \
@@ -3975,9 +3910,11 @@ cd man-db-2.9.4
             --enable-cache-owner=bin             \
             --with-browser=/usr/bin/lynx         \
             --with-vgrind=/usr/bin/vgrind        \
-            --with-grap=/usr/bin/grap
+            --with-grap=/usr/bin/grap            \
+            --with-systemdtmpfilesdir=           \
+            --with-systemdsystemunitdir=
             
-make 
+make
 make check
 make install
 
@@ -3985,7 +3922,7 @@ cd ..
 rm -rf man-db-2.9.4
 ```
 
-#### 8.72 Procps-ng-3.3.17 
+#### 8.69 Procps-ng-3.3.17 
 
 Procps-ng 软件包包含监视进程的程序。
 
@@ -4013,7 +3950,7 @@ cd ..
 rm -rf procps-ng-3.3.17
 ```
 
-#### 8.73 Util-linux-2.37.2
+#### 8.70 Util-linux-2.37.2
 
 Util-linux软件包包含若干工具程序。这些程序中有处理文件系统、终端、分区和消息的工具。
 
@@ -4049,7 +3986,7 @@ cd ..
 rm -rf util-linux-2.37.2
 ```
 
-#### 8.74 E2fsprogs-1.46.4
+#### 8.71 E2fsprogs-1.46.4
 
 E2fsprogs软件包包含处理*ext2*文件系统的工具。此外它也支持*ext3*和*ext4*日志文件系统。
 
@@ -4088,6 +4025,64 @@ install-info --dir-file=/usr/share/info/dir /usr/share/info/com_err.info
 
 cd ..
 rm -rf e2fsprogs-1.46.4
+```
+
+#### 8.72 Sysklogd-1.5.1
+
+sysklogd包包含记录系统消息的程序，例如发生异常情况时内核给出的消息。
+
+估计构建时间：< 0.1 SBU
+
+需要硬盘空间：0.6 MB
+
+```shell
+cd $LFS/sources
+tar xvf sysklogd-1.5.1.tar.gz
+cd sysklogd-1.5.1
+
+sed -i '/Error loading kernel symbols/{n;n;d}' ksym_mod.c
+sed -i 's/union wait/int/' syslogd.c
+make
+make BINDIR=/sbin install
+
+#配置
+cat > /etc/syslog.conf << "EOF"
+# Begin /etc/syslog.conf
+
+auth,authpriv.* -/var/log/auth.log
+*.*;auth,authpriv.none -/var/log/sys.log
+daemon.* -/var/log/daemon.log
+kern.* -/var/log/kern.log
+mail.* -/var/log/mail.log
+user.* -/var/log/user.log
+*.emerg *
+
+# End /etc/syslog.conf
+EOF
+
+cd ..
+rm -rf sysklogd-1.5.1
+```
+
+#### 8.73 Sysvinit-2.97
+
+Sysvinit软件包包含用于控制系统启动、运行和关闭的程序。
+
+估计构建时间：< 0.1 SBU
+
+需要磁盘空间：1.4 MB
+
+```shell
+cd $LFS/sources
+tar xvf sysvinit-2.97.tar.xz
+cd sysvinit-2.97
+
+patch -Np1 -i ../sysvinit-2.97-consolidated-1.patch
+make
+make install
+
+cd ..
+rm -rf sysvinit-2.97
 ```
 
 #### 8.75 移除调试符号
@@ -4157,7 +4152,7 @@ unset BIN LIB save_usrlib online_usrbin online_usrlib
 rm -rf /tmp/*
 ```
 
-退出重新进入chroot环境。
+退出重新进入chroot环境。从现在开始，在退出后需要重新进入chroot环境时，请随时使用此更新的chroot命令。
 
 ```shell
 logout
@@ -4206,8 +4201,10 @@ rm -rf lfs-bootscripts-20210608
 
 命名方案可以通过创建自定义udev规则来定制。已经包含了生成初始规则的脚本。通过运行生成这些规则。
 
-```
+```shell
 bash /lib/udev/init-net-rules.sh
+
+#未发现有下列文件
 cat /etc/udev/rules.d/70-persistent-net.rules
 ```
 
@@ -4215,27 +4212,31 @@ cat /etc/udev/rules.d/70-persistent-net.rules
 
 请根据宿主机网络配置进行设置。
 
+<img src="Linux From Scratch.assets/image-20211116094922882.png">
+
+<img src="Linux From Scratch.assets/image-20211116095139609.png">
+
 ```shell
 cd /etc/sysconfig/
 cat > ifconfig.enp2s1 << "EOF"
 ONBOOT=yes
 IFACE=enp2s1
 SERVICE=ipv4-static
-IP=192.168.0.10
-GATEWAY=192.168.0.1
+IP=172.16.128.6
+GATEWAY=172.16.0.2
 PREFIX=24
-BROADCAST=192.168.0.1
+BROADCAST=172.16.255.255
 EOF
 ```
 
-**创建*/etc/resolv.conf*文件**
+**创建*/etc/resolv.conf*文件用于域名解析**
 
 ```shell
 cat > /etc/resolv.conf << "EOF"
 # Begin /etc/resolv.conf
 
 domain pyqlfs
-nameserver 192.168.0.1
+nameserver 172.16.0.2
 
 # End /etc/resolv.conf
 EOF
@@ -4254,7 +4255,7 @@ cat > /etc/hosts << "EOF"
 # Begin /etc/hosts
 
 127.0.0.1 localhost
-192.168.0.20 pyq-lfs
+172.16.128.11 pyq-lfs
 
 # End /etc/hosts
 EOF
@@ -4295,7 +4296,7 @@ su:S016:once:/sbin/sulogin
 EOF
 ```
 
-**创建*/etc/sysconfig/clock*文件**
+**创建*/etc/sysconfig/clock*文件配置系统时钟**
 
 ```she
 cat > /etc/sysconfig/clock << "EOF"
@@ -4398,7 +4399,7 @@ EOF
 
 #### 10.1 创建/etc/fstab文件
 
-/etc/fstab某些程序使用 该文件来确定默认情况下将文件系统安装到何处、以何种顺序以及在安装前必须检查哪些文件系统（完整性错误）。创建一个新的文件系统表，如下所示。
+/etc/fstab某些程序使用该文件来确定默认情况下将文件系统安装到何处、以何种顺序以及在安装前必须检查哪些文件系统（完整性错误）。请根据磁盘划分情况创建一个新的文件系统表，如下所示。
 
 ```shell
 cat > /etc/fstab << "EOF"
@@ -4407,9 +4408,8 @@ cat > /etc/fstab << "EOF"
 # file system  mount-point  type     options             dump  fsck
 #                                                              order
 
-/dev/sda1     /root        ext2    defaults              1     1
-/dev/sda2     /            ext4    defaults              1     1
-/dev/sda3     swap         swap     pri=1                0     0
+/dev/sdb2     /            ext4    defaults              1     1
+/dev/sdb1     swap         swap     pri=1                0     0
 proc           /proc        proc     nosuid,noexec,nodev 0     0
 sysfs          /sys         sysfs    nosuid,noexec,nodev 0     0
 devpts         /dev/pts     devpts   gid=5,mode=620      0     0
@@ -4514,7 +4514,7 @@ EOF
 将GRUB文件安装到*/boot/gru*b并设置启动扇区。
 
 ```shell
-grub-install /dev/sda
+grub-install /dev/sdb
 ```
 
 创建 /boot/grub/grub.cfg 文件。
@@ -4529,7 +4529,7 @@ insmod ext2
 set root=(hd0,2)
 
 menuentry "GNU/Linux, Linux 5.13.12-lfs-11.0" {
-        linux   /boot/vmlinuz-5.13.12-lfs-11.0 root=/dev/sda2 ro
+        linux   /boot/vmlinuz-5.13.12-lfs-11.0 root=/dev/sdb2 ro
 }
 EOF
 ```
@@ -4548,7 +4548,7 @@ echo 11.0 > /etc/lfs-release
 cat > /etc/lsb-release << "EOF"
 DISTRIB_ID="Linux From Scratch"
 DISTRIB_RELEASE="11.0"
-DISTRIB_CODENAME="<your name here>"
+DISTRIB_CODENAME="pyq"
 DISTRIB_DESCRIPTION="Linux From Scratch"
 EOF
 ```
@@ -4558,10 +4558,10 @@ EOF
 ```shell
 cat > /etc/os-release << "EOF"
 NAME="Linux From Scratch"
-VERSION="10.0"
+VERSION="11.0"
 ID=lfs
-PRETTY_NAME="Linux From Scratch 10.0"
-VERSION_CODENAME="<your name here>"
+PRETTY_NAME="Linux From Scratch 11.0"
+VERSION_CODENAME="pyq"
 EOF
 ```
 
@@ -4577,9 +4577,17 @@ logout
 umount -Rv $LFS
 ```
 
+在卸载文件系统的过程中，可能出现*/mnt/lfs*正在使用的情况，通过命令`lsof /mnt/lfs`查看正在使用该文件系统的进程，再使用`kill -9 pid`杀死进程，再次通过`umount /mnt/lfs`卸载即可。
+
 重新启动系统。
 
 ```shell
 shutdown -r now
 ```
+
+**最终的文件目录。**
+
+
+
+<img src="Linux From Scratch.assets/image-20211116124425226.png">
 
