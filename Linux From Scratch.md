@@ -4157,6 +4157,13 @@ rm -rf /tmp/*
 ```shell
 logout
 
+#重新挂载
+mount -v --bind /dev $LFS/dev
+mount -v --bind /dev/pts $LFS/dev/pts
+mount -vt proc proc $LFS/proc
+mount -vt sysfs sysfs $LFS/sys
+mount -vt tmpfs tmpfs $LFS/run
+
 chroot "$LFS" /usr/bin/env -i          \
     HOME=/root TERM="$TERM"            \
     PS1='(lfs chroot) \u:\w\$ '        \
@@ -4579,6 +4586,12 @@ umount -Rv $LFS
 
 在卸载文件系统的过程中，可能出现*/mnt/lfs*正在使用的情况，通过命令`lsof /mnt/lfs`查看正在使用该文件系统的进程，再使用`kill -9 pid`杀死进程，再次通过`umount /mnt/lfs`卸载即可。
 
+强烈建议用Ubuntu虚拟机的grub来引导LFS系统，探测多系统的软件是os-prober，Ubuntu安装os-prober之后运行如下命令重重新配置启动选项。
+
+```shell
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
 重新启动系统。
 
 ```shell
@@ -4590,4 +4603,8 @@ shutdown -r now
 
 
 <img src="Linux From Scratch.assets/image-20211116124425226.png">
+
+GRUB引导界面。
+
+<img src="Linux From Scratch.assets/image-20211116163900777.png">
 
