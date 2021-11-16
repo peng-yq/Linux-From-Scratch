@@ -9,7 +9,7 @@ Please read the [Linux From Scratch.md](https://github.com/Eilopyq/Linux-From-Sc
 
 All builds are done in the virtual machine.
 
-**Important：I have finished all the capters, but there is something wrong with it. So i'll try make lfs again from the begin.**
+**Important：I have finished all the capters, but there is something wrong with it. So i'll try make lfs again from the beginning.**
 
 ## Softwares & Configuration
 
